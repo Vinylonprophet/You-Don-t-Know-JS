@@ -775,3 +775,139 @@ console.log(bar);		// ReferenceError
 }
 ```
 
+###### 垃圾收集
+
+`块级作用域非常有用的原因和闭包及回收内存垃圾的回收机制相关`，内部的实现原理也就是闭包的机制会在第五章谈到
+
+**例子：**
+
+```javascript
+function process(data){
+	// ...
+}
+
+var someReallyBigData = {..};
+
+process(someReallyBigData);
+
+var btn = document.getElementById("my_button");
+
+btn.addEventListener("click", function click(evt){
+	console.log("button clicked");
+}, /*capturingPhase*/false);
+```
+
+click的函数点击回调不需要someReallyBigData变量，意味着当process(..)执行后，内存中的大量数据结构可以被回收了。但是，由于click函数形成了一个覆盖整个作用域的闭包，所以引擎很有可能还保留这个结构（取决于实现）
+
+块级作用域可以打消这种顾虑，如下：
+
+```javascript
+function process(data){
+	// ...
+}
+
+// 这个块中定义的可以完全销毁
+{
+    let someReallyBigData = {..};
+
+	process(someReallyBigData);
+}
+
+var btn = document.getElementById("my_button");
+
+btn.addEventListener("click", function click(evt){
+	console.log("button clicked");
+}, /*capturingPhase*/false);
+```
+
+###### let循环
+
+一个let可以发挥优势的典型例子就是for循环
+
+```javascript
+for(let i=0; i<10; i++){
+	console.log(i);
+}
+console.log(i);		// ReferenceError
+```
+
+**注意：**for循环的let不仅将i绑定到了for循环的块中，事实上还将其`重新绑定`到了每一个迭代中，确保上一个循环迭代结束时的值重新进行赋值
+
+重新绑定的行为如下：
+
+```javascript
+{
+	let i = 0;
+	for(j=0; j<10; j++){
+		let i = j;		// 每个迭代重新绑定
+		console.log(i);
+	}
+}
+```
+
+如果用let来替代var在代码重构时，需要更多精力：
+
+```javascript
+var foo = true, baz = 10;
+
+if(foo){
+	var bar = 3;
+	
+	if(baz > bar){
+		console.log(baz);
+	}
+	
+	// ...
+}
+```
+
+重构如下：
+
+```javascript
+var foo = true, baz = 10;
+
+if(foo){
+	var bar = 3;
+	// ...
+}
+
+if(baz > bar){
+	console.log(baz);
+}
+```
+
+使用块级作用域的变量时，需要注意以下变化：
+
+```javascript
+var foo = true, baz = 10;
+
+if(foo){
+	let bar = 3;
+	
+	if(baz > bar){		// 重构时得注意bar
+		console.log(baz);
+	}
+	
+	// ...
+}
+```
+
+##### const
+
+ES6除了引入let，还引入了const，同样可以用来创建块作用域变量，但值是固定的常量。之后任何修改都会报错。
+
+```javascript
+var foo = true;
+
+if(foo){
+	var a = 2;
+	const b = 3;	// 包含在if中的块作用域常量
+	
+	a = 3;			// 正确
+	b = 4;			// 错误
+}
+
+console.log(a);		// 3
+console.log(b);		// ReferenceError
+```
+
