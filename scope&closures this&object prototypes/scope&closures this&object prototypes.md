@@ -501,4 +501,277 @@ var MyReallyCoolLibrary = {
 
 
 
-**注意：**由于挨章打字过于耗费时间，所以下面的笔记取消，把练习题记录到另一个markdown文档上
+**注意：**由于挨章打字过于耗费时间，所以从此处开始，下面的笔记进行高度概括
+
+
+
+#### 函数作用域
+
+已知在任意代码片段外部添加包装函数，可以将内部的变量和函数定义“隐藏”起来，外部作用域无法访问包装函数内部的任何内容
+
+**例子：**
+
+```javascript
+var a = 2;
+
+function foo(){
+	var a = 3;
+	console.log(a);		// 3
+}
+foo();
+
+console.log(a);			// 2
+```
+
+虽然通过声明具体函数foo()，来使外部无法访问包装函数内部，但是会出现**两个问题：**
+
+1. foo这个名称污染了所在的作用域
+2. 必须通过调用foo()函数才能运行其中的代码
+
+以下的例子既不需要函数名，又可以不通过调用来解决上述问题：
+
+```javascript
+var a = 2;
+
+(function foo(){
+	var a = 3;
+	console.log(a);		// 3
+})();
+
+console.log(a);			// 2
+```
+
+包装函数以 **(function** 开始，此时以及不是`函数声明`而是`函数表达式`
+
+比较前面两者，第一个片段中 foo 被绑定在所在作用域，第二个片 foo 被绑定在函数表达式自身的函数中而不是作用域中，也就是说(function foo() { .. })作为函数表达式意味着foo只能在 .. 所代表的位置中被访问，外部作用域不行，也就不会污染外部作用域了
+
+
+
+##### 匿名和具名
+
+**回调函数：**
+
+```javascript
+setTimeout( function(){
+	console.log('I wait 1 second');
+}, 1000);
+```
+
+此处为`匿名函数表达式`，因为function()没有名称标识符。**函数表达式**可以是匿名的，但是**函数声明**不可以省略函数名
+
+**缺点：**
+
+1. 函数在栈追踪不会显示出有意义的函数名，调试困难
+2. 如果没有函数名，函数需要引用自身时只能使用已经过期的`arguments.callee`引用，比如在递归中。另一个函数需要引用自身的例子，是在事件触发后事件监听器需要解绑自身
+3. 匿名函数`省略了`对于代码的可读性 / 可理解性很重要的`函数名`。
+
+行内函数表达式可以给函数表达式指定一个函数名解决问题
+
+```javascript
+setTimeout( function timeoutHandler(){
+	console.log('I wait 1 second'); 
+}, 1000);
+```
+
+##### 立即执行函数表达式
+
+**例子：**
+
+```javascript
+var a = 2;
+
+(function foo(){
+	var a = 3;
+	console.log(a);		// 3
+})();
+
+console.log(a);			// 2
+```
+
+第一个()将函数变成表达式，第二个()执行了这个函数
+
+这种模式有个专业术语：**IIFE**，代表立即执行函数表达式(Immediately Invoked Function Expression)
+
+函数名对IIFE不是必须的，IIFE最常见的用法是使用一个匿名函数表达式。虽然使用具名函数的IIFE并不常见，但是它具有上述匿名函数表达式的所有优势，也是一个值得推广的实践
+
+```javascript
+var a = 2;
+(function IIFE(){
+
+	var a = 3;
+	console.log(a);		// 3
+})();
+
+console.log(a);			// 2
+```
+
+相较于传统的形式，很多人还喜欢另一个`改进形式`：
+
+```javascript
+(function(){..}())
+```
+
+功能上是一致的
+
+IIFE**进阶用法：**把它们当作函数调用并传递参数进去
+
+**例子：**
+
+```javascript
+var a = 2;
+
+(function IIFE(global){
+	
+	var a = 3;
+	console.log(a);			// 3
+	console.log(global.a);	// 2
+	
+})(window);
+
+console.log(a);				// 2
+```
+
+将window对象传递进去，但是将参数命名为global，因此在代码风格上对全局对象的引用变得比引用一个没有”全局“字样的变量更加清晰。可以从外部作用域传递任何需要的东西，并且将变量命名为任何自己觉得合适的名字，对于改进代码风格非常有用
+
+另一个场景：将一个参数命名为undefined，但是在对应位置不传入任何值，这样可以保证在代码块中undefined标识符的值真的为undefined：
+
+```javascript
+undefined = true;		// 不要这样做
+
+(function IIFE(undefined){
+
+	var a;
+	if(a === undefined){
+		console.log("Undefined is safe here!");
+	}
+	
+})()
+```
+
+IIFE还能用来倒置代码的运行顺序，将需要运行的函数放在第二位，在IIFE执行之后当作参数传递进去。在**UMD(Universal Module Definition)**项目中被广泛使用。
+
+```javascript
+var a = 2;
+
+(function IIFE(def){
+	def(window);
+})(function def(global){
+	
+	var a = 3;
+	console.log(a);			// 3
+	console.log(global.a);	// 2
+    
+})
+```
+
+1. def(global)被当作参数传递进IIFE函数定义的第一部分中
+2. def被调用，将window传入当作global的值
+
+
+
+#### 块作用域
+
+除了JavaScript外很多语言都支持块作用域，但是这对JavaScript的开发者而言会很陌生
+
+```javascript
+for(var i=0; i<10; i++){
+	console.log(i);
+}
+```
+
+我们在for的头部定义了i，通常是因为只想在for循环内部的上下文使用i，而忽略了i会被绑定在外部作用域（函数或全局）的事实
+
+这是块作用域的用处，变量的声明应该距离使用的地方越近越好，并且最大限度本地化
+
+```javascript
+var foo = true;
+
+if(foo){
+	var bar = foo * 2;
+	bar = something(bar);
+	console.log(bar);
+}
+```
+
+上述代码将bar声明在if内部是非常有意义的一件事情，但当var声明变量，它写在哪里都一样，因为都属于外部作用域，这段代码是为了风格更易读而伪装出的形式上的块作用域，如果使用这种形式，要确保没在作用域其他地方意外使用bar只能靠自觉性
+
+这是块作用域的用处，变量的声明应该距离使用的地方越近越好，并且最大限度本地化
+
+块作用域是一个用来对之前的**最小授权原则**进行扩展的工具，将代码从在函数中隐藏信息扩展为在块中隐藏信息
+
+再次考虑for循环的例子，为什么要把只在for循环内容使用的变量 i 污染整个作用域呢
+
+可惜表面上 JavaScript 没有块作用域的相关功能
+
+##### with
+
+之前提到过的with也是块作用域的一个例子，用with从对象中创建出的作用域仅在with声明中而非外部作用域有效
+
+##### try/catch
+
+ES3中规定的try/catch分句会创建一个块作用域，其中声明的变量仅在catch内部有效
+
+**例子：**
+
+```javascript
+try{
+	undefined();		// 执行一个非法操作来强制制造一个异常
+}
+catch(err){
+	console.log(err);	// 能够正常执行！
+}
+
+console.log(err);		// ReferenceError: err not found
+```
+
+err仅存在catch中，其他地方引用会报错
+
+##### let
+
+幸好ES6的let提供了除了var以外的变量声明方式
+
+let关键字可以将变量绑定到所在的任意作用域中**（通常{..}内部）**，换句话说，let为其声明的变量隐式地劫持了所在的块作用域
+
+**例子：**
+
+```javascript
+var foo = true;
+
+if(foo){
+	let bar = foo * 2;
+	bar = something(bar);
+	console.log(bar);
+}
+
+console.log(bar);		// ReferenceError
+```
+
+让let将变量附加在一个已经存在的块级作用域上的行为是隐式的。在开发和修改代码的过程中，如果没有密切关注哪些块级作用域中有绑定的变量，并且习惯性的移动这些块或将其包含在其他的块中，就会导致代码混乱。
+
+`为块作用域显式地创建块`可以部分解决这个问题，使变量的附属关系变得更加清晰，如下：
+
+```javascript
+var foo = true;
+
+if(foo){
+	{
+        let bar = foo * 2;
+		bar = something(bar);
+		console.log(bar);
+    }
+}
+
+console.log(bar);		// ReferenceError
+```
+
+好处在于在if内部`显式`地创建了一个块，如果要进行重构，整个块都可以被方便的移动而不会对外部if声明地位置和语义产生任何影响
+
+**注意：**let的声明不会在块作用域中进行提升，声明的代码被运行之前，声明`不存在`，如下：
+
+```javascript
+{
+	console.log(bar);		// ReferenceError!
+	let bar = 2;
+}
+```
+
