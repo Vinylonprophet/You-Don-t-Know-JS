@@ -911,3 +911,201 @@ console.log(a);		// 3
 console.log(b);		// ReferenceError
 ```
 
+
+
+### 提升
+
+作用域和其中的变量声明出现的位置有某种微妙的联系，这个细节是我们需要讨论的内容
+
+#### 先有鸡还是先有蛋
+
+直觉上认为JavaScript的代码是从上到下一行行执行，但是并不完全正确，比如：
+
+```javascript
+a = 2;
+
+var a;
+
+console.log(a);		// 2
+```
+
+很多人会认为是undefined，因为他们认为var a在声明a = 2之后，变量a会被重新赋值，因此被赋予默认值undefined，但是**真正结果是2**
+
+考虑下方：
+
+```javascript
+console.log(a);
+
+var a = 2;
+```
+
+大多数人有两种观点：
+
+1. 非某种自上而下的行为，这个片段和上方有一样的行为，所以输出2
+2. 变量a在使用前没有声明，因此会抛出ReferenceError
+
+**正确答案：**undefined
+
+
+
+#### 编译器再度来袭
+
+编译器的正确思考思路：包括变量和函数在内的所有声明都会在任何代码被执行前先被处理
+
+var a = 2 会被编译器拆分成两个声明，一个是var a，一个是a = 2，前者是在编译阶段执行的，后者赋值声明会`被留在原地`等待执行
+
+所以上一节第一个代码片段是：
+
+```javascript
+var a;
+a = 2;
+console.log(a)
+```
+
+第二个代码片段是：
+
+```javascript
+var a;
+console.log(a);
+a = 2;
+```
+
+这个过程好像是变量和函数声明从它们在代码中出现的位置被移动到了最上面，所以**过程叫做提升**
+
+**先有（蛋）声明后有（鸡）赋值**
+
+**例子：**
+
+```javascript
+foo();
+
+function foo(){
+	console.log(a);		// undefined
+	var a = 2;
+}
+```
+
+foo函数的声明会被提升，因此第一行调用没问题，要注意每个作用域都会进行提升，foo(..)内部对var也进行了提升，如下：
+
+```javascript
+function foo(){
+	var a;
+	console.log(a);		// undefined
+	a = 2;
+}
+
+foo();
+```
+
+上述证明了函数声明会被提升，下面证明了函数表达式不会被提升：
+
+```javascript
+foo();		// 不是Reference，而是TypeError
+
+var foo = function(){
+	// ...
+}
+```
+
+此处foo因为被提升了，所以不会报Reference，但是此时foo没有赋值也就是undefined，但是函数对foo进行了函数调用，所以抛出TypeError异常
+
+**例子：**
+
+```javascript
+foo();		// TypeError
+bar();		// ReferenceError
+
+var foo = function bar(){
+	// ...
+}
+```
+
+代码片段经过提升后：
+
+```javascript
+var foo;
+
+foo();		// TypeError
+bar();		// ReferenceError
+
+foo = function bar(){
+	var bar = ...self...
+	// ...
+}
+```
+
+
+
+#### 函数优先
+
+函数和变量都会被提升，但是要注意先提升函数，才提升变量
+
+```javascript
+foo();		// 1
+
+var foo;
+
+function foo(){
+	console.log(1);
+}
+
+foo = function(){
+	console.log(2);
+}
+```
+
+代码片段经过提升后：
+
+```javascript
+function foo(){
+	console.log(1)
+}
+
+var foo;		// 被忽略
+
+foo();
+
+foo = function(){
+	console.log(2);
+}
+```
+
+**注意：**var foo尽管出现在function foo()...之前，但是是重复声明（所以被忽略了），因为函数声明会被提升到普通变量之前
+
+尽管重复的var声明会被忽略掉，但是出现在后面的函数声明还是可以覆盖前面的
+
+```javascript
+foo();			// 3
+
+function foo(){
+	console.log(1);
+}
+
+var foo = function(){
+	console.log(2);
+}
+
+function foo(){
+	console.log(3);
+}
+```
+
+普通块内部的函数声明通常会被提升到所在作用域的顶层，不会像下面的代码暗示的那样可以被条件判断控制：
+
+```javascript
+foo();		// TypeError: foo is not a function
+
+var a = true;
+if(a){
+	function foo(){console.log("a");}
+}else{
+	function foo(){console.log("b");}
+}
+```
+
+尽可能避免在块内部声明函数
+
+
+
+### 作用域闭包
+
