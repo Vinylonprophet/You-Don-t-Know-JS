@@ -1501,3 +1501,133 @@ foo.identify();			// FOO MODULE
 
 
 ##### 现代的模块机制
+
+大多数模块依赖加载器/管理器本质上都是将这种模块定义封装进一个友好的API，这里简单介绍一些核心概念：
+
+```javascript
+var MyModules = (function Manager() {
+	var modules = {};
+	
+	function define(name, deps, impl) {
+		for(var i=0; i<deps.length; i++){
+			deps[i] = modules[deps[i]];
+		}
+		modules[name] = impl.apply( impl, deps );
+	}
+	
+	function get(name){
+		return modules[name];
+	}
+	
+	return {
+		define: define,
+		get: get
+	};
+})();
+```
+
+核心：modules[name] = impl.apply(impl, deps)
+
+为了模块的定义引入了包装函数（可以传入任何依赖），并且将返回值，也就是模块API，储存在一个根据名字来管理的模块列表中
+
+```javascript
+MyModules.define("bar", [], function() {
+	function hello(who){
+		return "Let me introduce: " + who;
+	}
+	
+	return {
+		hello: hello
+	};
+});
+
+MyModules.define("foo", ["bar"], function() {
+	var hungry = "hippo";
+
+	function awesome(){
+		console.log( bar.hello(hungry).toUpperCase() );
+	}
+	
+	return {
+		awesome: awesome
+	};
+});
+
+var bar = MyModules.get( "bar" );
+var foo = MyModules.get( "foo" );
+
+console.log(
+	bar.hello( "hippo" )
+);	// Let me introduce: hippo
+
+foo.awesome();	// LET ME INTRODUCE: HIPPO
+```
+
+foo 和 bar 都是通过一个返回公共API的函数来定义的。foo 甚至接受 bar 的实例作为依赖参数，并相应使用它
+
+模块模式的两个特点：调用了包装了函数定义的包装函数，并且将返回值作为该模块的API
+
+##### 未来来的模块机制
+
+ES6为模块增加了一级语法支持，当通过模块系统进行加载时，会将文件当作独立的模块处理。每个模块都可以导入其他模块或特定的API成员，同样也可以导出自己的API成员
+
+ES6没有 ”行内“ 格式，必须被定义在独立的文件中（一个文件一个模块），浏览器或引擎有一个默认的”模块加载器“可以在`导入模块的时候同步地加载模块文件`
+
+**例子：**
+
+bar.js
+
+```javascript
+function hello(who) {
+	return "Let me introduce: " + who;
+}
+
+export hello
+```
+
+foo.js
+
+```javascript
+import hello from "bar";
+
+var hungry = "hippo";
+
+function awesome() {
+	console.log(
+		hello(hungry).toUpperCase()
+	);
+}
+
+export awesome
+```
+
+baz.js
+
+```javascript
+module foo from "foo";
+module bar from "bar";
+
+console.log(
+	bar.hello("rhino")
+);	// Let me introduce: rhino
+
+foo.awesome();		// LET ME INTRODUCE: HIPPO
+```
+
+之前的代码片段会分别创建bar.js和foo.js，然后baz.js中的程序会加载或导入这两个模块并使用他们
+
+模块文件中的内容会被当作好像包含在作用域闭包中一样来处理，就和前面介绍的函数闭包模块一样
+
+
+
+#### 闭包小结
+
+言简意赅就是：在词法作用域的环境下写代码，其中的函数也是值，可以随意传来传去
+
+**当函数可以记住并访问所在的词法作用域，即使函数是在当前词法作用域之外执行，这时就产生了闭包**
+
+闭包可以使用多种形式来实现`模块`等模式，模块有两个特征：
+
+1. 为创建内部作用域而调用了一个包装函数
+2. 包装函数的返回值必须至少包括一个对内部函数的引用，这样就会创建涵盖整个包装函数内部作用域的闭包
+
