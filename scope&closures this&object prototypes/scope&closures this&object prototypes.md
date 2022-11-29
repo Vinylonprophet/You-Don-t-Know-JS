@@ -1354,7 +1354,150 @@ for(let i=0; i<=5; i++){
 }
 ```
 
+块作用域和闭包联手天下无敌
+
 
 
 #### 模块
 
+其他模式利用闭包的为例，表面上和回调无关。其中最强大的一个：**模块** 。
+
+```javascript
+function foo(){
+	var something = "cool";
+	var another = [1, 2, 3];
+	
+	function doSomething(){
+		console.log(something);
+	}
+	
+	function doAnother(){
+		console.log(another.join("!"));
+	}
+}
+```
+
+此处没有明显的闭包，只有两个私有数据变量something和another，以及doSomething()和doAnother()两个内部函数，它们的词法作用域也就是foo()的内部作用域
+
+考虑如下代码：
+
+```javascript
+function CoolModule(){
+	var something = "cool";
+	var another = [1, 2, 3];
+	
+	function doSomething(){
+		console.log(something);
+	}
+	
+	function doAnother(){
+		console.log(another.join(" ! "));
+	}
+	
+	return {
+		doSomething: doSomething,
+		doAnother: doAnother
+	}
+}
+
+var foo = CoolModule();
+
+foo.doSomething();		// cool
+foo.doAnother();		// 1 ! 2 ! 3
+```
+
+这个模式在JavaScript被称为模块，最常见的实现模式模块的方法通常被称为模块暴露，这里是其变体
+
+1. CoolModule()只是一个函数，必须通过调用它来创建一个模块实例，如果不执行外部函数，内部作用域和闭包都无法被创建
+2. CooModule()返回一个用对象字面量语法{ key:value, ... }来表示的对象，这个返回的对象中含有对内部函数而不是内部数据变量的引用。保持了内部数据是隐藏且私有的，可以将对象类型的返回值看作本质上是模块的公共API
+3. doSomething()和doAnother()函数具有涵盖模块实力内部的作用域的闭包（通过调用CoolModule()实现），当通过返回一个含有属性引用的对象的方式来将函数传递到词法作用域外部时，我们已经创造了可以观察和实践闭包的条件
+
+如此得出，模式模块需要具备**两个必要条件：**
+
+1. 必须有外部的封闭函数，该函数必须至少被调用一次（每次调用都会创建一个新模块实例）
+2. 封闭函数必须返回至少一个内部实例，这样内部函数才能在私有作用域中形成闭包，并且可以访问或修改私有的状态
+
+`具有函数属性的对象并不是真正的模块，一个函数调用所返回的，只有数据属性而没有闭包函数的对象并不是真正的模块`
+
+上述代码有一个叫CoolModule()的独立的模块创建器，可以被调用任意次，每次调用都会创建一个新的模块实例，当只需要一个实例时，可以对其进行改进来实现`单例模式`：
+
+```javascript
+var foo = (function CoolModule(){
+	var something = "cool";
+	var another = [1, 2, 3];
+	
+	function doSomething(){
+		console.log(something);
+	}
+	
+	function doAnother(){
+		console.log(another.join(" ! "));
+	}
+	
+	return {
+		doSomething: doSomething,
+		doAnother: doAnother
+	};
+})();
+
+foo.doSomething();		// cool
+foo.doAnother();		// 1 ! 2 ! 3
+```
+
+将函数模块转换成了IIFE，立即调用这个函数并且返回值直接赋值给单例的模块实例标识符foo
+
+模块也是`普通的函数`，因此也可以接收参数：
+
+```javascript
+function CoolModule(id){
+	function identify(){
+		console.log(id);
+	}
+	
+	return {
+		identify: identify
+	};
+}
+
+var foo1 = CoolModule( "foo 1" );
+var foo2 = CoolModule( "foo 2" );
+
+foo1.identify();		// foo 1
+foo2.identify();		// foo 2
+```
+
+模块另一个简单但强大的用法是命名将要作为公共API返回的对象：
+
+```javascript
+var foo = (function CoolModule(id){
+	function change(){
+		// 修改公共API
+		publicApi.identify = identify2;
+	}
+	
+	function identify1(){
+		console.log(id);
+	}
+	
+	function identify2(){
+		console.log(id.toUpperCase());
+	}
+	
+	var publicAPI = function(){
+		change: change,
+		identify: identify1
+	};
+	
+	return publicAPI;
+})("foo Module")
+
+foo.identify();			// foo Module
+foo.change();
+foo.identify();			// FOO MODULE
+```
+
+通过在模块实例的内部保留对公共API对象的内部引用，可以从内部对模块实例进行修改，包括添加或删除方法和属性，以及修改他们的值
+
+
+
+##### 现代的模块机制
