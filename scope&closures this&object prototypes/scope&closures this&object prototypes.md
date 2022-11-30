@@ -1686,5 +1686,100 @@ bar();
 
 ### 附录B —— 块作用域的替代方案
 
+ES6引入了let，使代码有了创建完整，不受约束的块作用域的能力，其在代码风格和功能上都有很多新特性，但是在ES6之前是如何使用块作用域的呢？
+
+**ES6：**
+
+```javascript
+{
+	let a = 2;
+	console.log(a);		// 2
+}
+
+console.log(a);			// ReferenceError
+```
+
+**ES6之前：**
+
+```javascript
+try{throw 2;}catch(a){
+	console.log(a);		// 2
+}
+
+console.log(a);			// ReferenceError
+```
+
+用到了catch的块作用域，但是过于丑陋
+
+
+
+#### B.1 Traceur
+
+Google维护着名为Traceur的项目，项目正是用来将ES6转换为兼容ES6之前的环境（大部分是ES5，但不是全部）。
+
+Traceur会将代码转换成：
+
+```javascript
+{
+	try{
+		throw undefined;
+	} catch(a) {
+		a = 2;
+		console.log(a);
+	}
+}
+
+console.log(a);
+```
+
+try/catch从ES3开始就存在了
+
+
+
+#### B.2 隐式和显式作用域
+
+考虑下面的let的使用方法，它被称作let作用域或let声明（对比之前的let定义）：
+
+```javascript
+let(a = 2) {
+	console.log(a);		// 2
+}
+
+console.log(a);			// ReferenceError
+```
+
+同之前隐式地劫持一个已经存在的作用域不同，let会创建一个显式地作用域并与其进行绑定，**显示作用域**不仅更加`突出`，在代码重构时也表现得更加`健壮`。语法上，通过强制将所有变量声明提升到块的顶部来产生更简洁的代码。这样更容易判断变量是否属于某个作用域
+
+let声明放块的顶部就会容易辨识和维护
+
+可惜 ES6 中不包括 let 声明，官方的 Traceur 编译器也不接受这种形式的代码
+
+**两个选择：**
+
+做出代码规范性上的妥协：
+
+```javascript
+/*let*/ { let a = 2;
+	console.log(a);
+}
+
+console.log(a);		// ReferenceError
+```
+
+使用let-er的工具解决问题，let-er是一个构建时的代码转换器，唯一的作用就是找到let声明并对其进行转换，可以去了解一下
+
+
+
+#### B.3 性能
+
+为什么不直接使用IIFE来创建作用域？
+
+两个回答：
+
+1. try/catch确实糟糕，但是自从TC39支持ES6转换器使用try/catch之后，就已经对性能进行改进了
+2. IIFE和try/catch并不完全对等，代码中的任意一部分拿出来用函数包裹，会改变这段代码的意义，其中的this、return、break 和 continue 都会发生变化。并不是一个普适的解决方案
+
+
+
 
 
