@@ -1797,7 +1797,7 @@ foo(2);		// 2
 
 ```javascript
 var obj = {
-	id: "awesome"，
+	id: "awesome",
 	cool: function coolFn() {
 		console.log(this.id);
 	}
@@ -1873,3 +1873,144 @@ obj.cool();		// more awesome
 ```
 
 无论是箭头还是还是bind，它们之间`有意为之`的不同行为需要我们理解和掌握，才能正确的使用它们
+
+
+
+## CLOURES THIS & OBJECT PROTOTYPES
+
+### 关于this
+
+this被自动定义在所有函数的作用域中，this可以是代词也可以是关键字，所以最好是使用"this"代表关键字，this代表代词
+
+
+
+#### 为什么要用this
+
+```javascript
+function identify(){
+	return this.name.toUpperCase();
+}
+
+function speak(){
+	var greeting = "Hello, I'm " + identify.call(this);
+    console.log(greeting);
+}
+
+var me = {
+	name: "Kyle"
+};
+
+var you = {
+	name: "Reader"
+};
+
+identify.call(me);		// KYLE
+identify.call(you);		// READER
+
+speak.call(me);			// Hello, I'm KYLE
+speak.call(you);		// Hello, I'm READER
+```
+
+这段代码可以在不同的上下文对象(me和you)中重复使用identify()和speak()，不用针对每个对象编写不同版本的函数
+
+如果不使用this，就需要给identify()和speak()显示传入一个上下文对象
+
+```javascript
+function identify(context){
+	return context.name.toUpperCase();
+}
+
+function speak(context){
+	var greeting = "Hello, I'm " + identify(context);
+	console.log(greeting);
+}
+
+identify(you);		// READER
+speak(me);			// Hello, I'm KYLE
+```
+
+this提供了一种更优雅的方式来**隐式的传递**一个对象引用，因此可以将API设计的更加**简洁且易于复用**
+
+
+
+#### 误解
+
+this的字面意思会产生一些误解，有两种常见的关于this的解释大多都是错误的
+
+
+
+##### 指向自身
+
+很容易把this理解成指向函数自身，从英语语法的角度而言是ok的
+
+为什么需要从函数内部引用函数自身呢，常见的原因是递归或者写一个第一次被调用自身后自己解除绑定的事件处理器
+
+新手一般会把函数看成一个对象（JavaScript中所有函数都是对象），那就可以在调用函数的存储状态（属性值），但实际上除了函数对象还有许多更适合存储状态的地方
+
+先来思考以下代码
+
+```javascript
+function foo(num){
+	console.log("foo" + num);
+	
+	// 记录foo被调用的次数
+    this.count++;
+}
+
+foo.count = 0;
+
+var i = 0;
+
+for(i=0; i<10; i++){
+    if(i > 5){
+        foo(i);
+    }
+}
+// 6
+// 7
+// 8
+// 9
+
+// foo被调用了多少次
+console.log(foo.count);		// 0	why
+```
+
+显然字面意思是错误的，因为虽然foo被调用了四次，this也是指向自身，但是count仍然是0
+
+**注意：**如果在foo中添加一个console.log(this.count)，会输出NaN
+
+所以虽然添加了一个属性count，但是函数内部代码的this显然不指向添加的count，虽然`属性名相同`，但`根对象并不相同`
+
+深入探索，这段代码无意间创了一个全局变量count，值为NaN，那为什么是全局的，为什么值是NaN而不是其他的更适合的值呢
+
+**解决方法一：**
+
+```javascript
+function foo(num){
+	console.log("foo: " + num);
+	
+	// 记录 foo 被调用的次数
+	data.count++;
+}
+
+var data = {
+	count: 0
+};
+
+var i;
+
+for(i=0; i<10; i++){
+	if(i>5){
+		foo(i);
+	}
+}
+// foo: 6
+// foo: 7
+// foo: 8
+// foo: 9
+
+// foo 被调用了多少次？
+console.log(data.count++);	// 4
+```
+
+虽然解决了问题，但是忽略了真正的问题——无法理解this的含义和工作原理，而是返回了舒适区，使用了更熟悉的技术：词法作用域
