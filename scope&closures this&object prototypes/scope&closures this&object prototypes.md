@@ -1781,5 +1781,95 @@ console.log(a);		// ReferenceError
 
 
 
+### 附录C —— this词法
 
+ES6 添加了一个特殊的语法形式用于函数声明，叫做箭头函数，如下：
 
+```javascript
+var foo = a => {
+	console.log(a);
+}
+
+foo(2);		// 2
+```
+
+这里的箭头通常被当作function关键字的简写，但是有着**更重要的作用：**
+
+```javascript
+var obj = {
+	id: "awesome"，
+	cool: function coolFn() {
+		console.log(this.id);
+	}
+}
+
+var id = "not awesome";
+
+obj.cool();		// awesome
+
+setTimeout(obj.cool, 100);		// not awesome
+```
+
+上述代码理解很容易，setTimeout是windows在调用，所以setTimeout指向的是windows.id，也就是说cool()函数丢失了同this之间的绑定，一般最常用的就是 var self = this;
+
+```javascript
+var obj = {
+	count: 0;
+	cool: function coolFn(){
+		var self = this;
+		
+		if(self.count < 1) {
+			setTimeout( function timer(){
+				self.count++;
+				console.log(" awesome? ");
+			}, 100 )；
+		}
+	}
+}
+
+obj.cool();		// awesome?
+```
+
+var self = this 圆满解决了理解和正确使用this绑定的问题，并且没有过于复杂化，使用的是词法作用域。self只是一个可以通过`词法作用域`和`闭包`进行引用的标识符
+
+ES6 箭头函数引入了一个叫做this词法的行为：
+
+```javascript
+var obj = {
+	count: 0,
+	cool: function coolFn(){
+		if(this.count < 1){
+			setTimeout( () => {
+            	this.count++;
+            	console.log("awesome ?");
+            }, 100 );
+		}
+	}
+}
+
+obj.cool();		// awesome?
+```
+
+箭头函数在涉及this绑定时和普通函数的行为完全不一致，他用的是当前词法作用域覆盖this本来的值，这里的箭头函数是继承了cool()函数的this绑定
+
+另一个不够理想的原因是：箭头函数是`匿名`而非具名
+
+使用bind()会更理想：
+
+```javascript
+var obj = {
+	count: 0,
+	cool: function(){
+		if(this.count < 1){
+			setTimeout( function(){
+				this.count++;
+				console.log("more awesome");
+			}.bind(this), 100);
+		}
+	}
+}
+
+obj.cool();		// more awesome
+```
+
+无论是箭头还是还是bind，它们之间`有意为之`的不同行为需要我们理解和掌握，才能正确的使用它们
