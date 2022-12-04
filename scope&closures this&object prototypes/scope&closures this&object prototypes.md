@@ -2014,3 +2014,113 @@ console.log(data.count++);	// 4
 ```
 
 虽然解决了问题，但是忽略了真正的问题——无法理解this的含义和工作原理，而是返回了舒适区，使用了更熟悉的技术：词法作用域
+
+如果从函数对象内部引用自身，只用this是不够的，一般而言需要通过一个指向函数对象的词法标识符（变量）来引用它
+
+```javascript
+function foo(){
+	foo.count = 4;
+}
+
+setTimeout(function(){
+	// 匿名函数没法调用自身
+},10 )
+```
+
+第二个例子因为没有名称标识符，所以无法从函数内部引用自身
+
+**补充：**有一种传统的但是已经被放弃和批判的是使用arguments.callee来引用当前正在运行的函数对象。是唯一可以从匿名函数对象内部引用自身的方法。然而，更好的方式是避免使用匿名函数，至少在需要自引时使用具名函数
+
+所以，另一种解决方法是使用foo标识符来替代this来引用函数对象：
+
+```javascript
+function foo(num){
+	console.log("foo: " + num);
+	
+	// 记录foo被调用的次数
+	foo.count++;
+}
+foo.count=0;
+var i;
+
+for(i=0; i<10; i++){
+	if(i > 5){
+		foo(i);
+	}
+}
+// foo: 6
+// foo: 7
+// foo: 8
+// foo: 9
+
+// foo被调用了多少次？
+console.log(foo.count);		// 4
+```
+
+但是，这种方法同样回避了this，并且完全依赖于变量foo的词法作用域
+
+另一种方法是强制this指向foo函数对象：
+
+```javascript
+function foo(num){
+	console.log("foo: " + num);
+	
+	// 记录foo被调用的次数
+	this.count++;
+}
+
+foo.count = 0;
+
+var i;
+
+for(i=0; i<10; i++){
+	if(i > 5){
+        // 使用call(...)可以确保this指向函数对象foo本身
+		foo.call(foo, i);
+	}
+}
+// foo: 6
+// foo: 7
+// foo: 8
+// foo: 9
+
+// foo被调用了多少次？
+console.log(foo.count);		// 4
+```
+
+
+
+##### 作用域
+
+第二种误解：this指向函数的作用域，某种情况下正确，其他情况下是错误的
+
+**明确一点：**this在任何情况下都不指向函数的词法作用域，在JavaScript内部，内部作用域和对象类似，但是作用域“对象”无法通过代码访问，存在于JavaScript引擎内部
+
+下列代码试图跨越边界，但是没有成功，使用this隐式引用函数的词法作用域：
+
+```javascript
+function foo(){
+	var a = 2;
+	this.bar();
+}
+
+function bar(){
+	console.log(this.a);
+}
+
+foo();		// ReferenceError: a is not defined
+```
+
+上述代码不只是一个错误：
+
+1. 代码通过this.bar()来引用bar()函数，这样能调用成功完全是意外，应该直接使用词法引用标识符
+2. 这段代码的开发者还试图通过this联通foo和bar的词法作用域，从而让bar()可以访问foo()作用域里的变量a，这是不可能实现的
+
+
+
+#### this到底是什么
+
+this是在**运行时进行绑定的**，this的绑定和函数声明的位置没有任何关系，只取决于函数的调用方式
+
+当一个函数被调用就会创建一个活动记录，这个记录会包含函数在哪里被调用（调用栈）、函数的调用方式、传入参数等信息，this就是这样一个记录属性，会在函数执行的过程中用到
+
