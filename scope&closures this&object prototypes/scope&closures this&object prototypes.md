@@ -2218,3 +2218,277 @@ var a = 2;
 ```
 
 ##### 隐式绑定
+
+调用位置需要考虑是否有上下文对象
+
+思考以下代码：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var obj ={
+	a: 2;
+	foo: foo
+}
+
+obj.foo();		// 2
+```
+
+**注意：**foo()的声明方式，以及是如何被当作引用属性添加到obj中，但无论是在obj中定义还是先定义后添加为引用属性，这个函数严格来说都不属于obj对象
+
+所以当函数有上下文对象时，隐式绑定规则会把函数调用中的this绑定到这个上下文对象，因为调用foo()时this被绑定到obj，因此this.a和obj.a是一样的
+
+对象属性引用链中`只有上一层`和`最后一层`在调用位置中起作用：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var obj2 = {
+	a: 42,
+	foo: foo
+}
+
+var obj1={
+	a: 2,
+	obj2: obj2
+}
+
+obj1.obj2.foo();	// 42
+```
+
+###### 隐式丢失
+
+一个最常见的问题就是`被隐式绑定的函数会丢失绑定对象`，也就是说它会应用默认绑定，从而把this绑定到全局对象或undefined上，却决于是否是`严格模式`
+
+思考下列代码：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var obj = {
+	a: 2,
+	foo: foo
+}
+
+var bar = obj.foo;			// 函数别名
+
+var a = "oops, global";		// a全局属性
+
+bar();						// oops,global
+```
+
+虽然bar是对obj.foo的一个引用，但是实际上引用的是foo函数本身，因此bar()其实是一个`不带任何修饰的函数调用`，因此应用了`默认绑定`
+
+更微妙，更常见，更出乎意料的情况发生在传入回调函数中：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+function doFoo(fn){
+	// fn其实引用的是foo
+	
+	fn();
+}
+
+var obj = {
+	a: 2,
+	foo: foo
+}
+
+var a = "oops, global";
+
+doFoo(obj.foo);		// oops,global
+```
+
+参数传递就是一种隐式赋值，因此传入函数时也会被隐式赋值，所以结果一样
+
+
+
+如果把函数传入语言内置的函数而不是传入我自己声明的函数：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var obj = {
+	a: 2,
+	foo: foo
+}
+
+var a = "oops, global"
+
+setTimeout(obj.foo, 100);		// oops, global
+```
+
+结果没有变化，因为只要参数传递，就是隐式赋值
+
+**重点：**JavaScript中内置的setTimeout()函数和下列的伪代码类似：
+
+```javascript
+function setTimeout(fn, delay){
+	// 等待delay毫秒
+	fn();	//	<-- 调用位置！
+}
+```
+
+就像我们看到的，回调函数丢失this绑定很常见，除此之外，`调用回调函数的函数可能会修改this`，一些流行的JavaScript库中事件处理器常会把`回调函数的this强制绑定到触发事件的DOM上`
+
+无论哪种情况出现，this的改变都是意想不到的，实际上`无法控制回调函数的执行方式`，因此就没有办法控制调用位置以得到期望的绑定，之后会介绍`固定this来修复这个问题`
+
+##### 显示绑定
+
+隐式绑定中，我们必须在一个对象内部包含一个指向函数的属性，并且通过这个属性间接引用函数，从而把this间接（隐式）绑定到这个对象上
+
+那么我们下面介绍不在对象内部包含函数引用，而在某个对象上`强制调用函数`
+
+JavaScript所有的函数都有一些有用的特性，这和`prototype`有关，具体点说，可以使用函数得call(..)和apply(..)方法，严格来说，JavAScript提供得一些特殊的函数没有这两个方法，但是不常见，绝大多数函数都可以使用call(..)和apply(..)
+
+**用法：**第一个参数是一个对象，给this准备的，接着在调用的时候将其绑定到this，可以直接`指定`this的绑定对象，我们称之为`显示绑定`
+
+思考以下代码：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var obj = {
+	a: 2
+}
+
+foo.call(obj);	// 2
+```
+
+通过foo.call(..)，可以在调用foo时强制把它的this绑定到obj上
+
+当你`传入了一个原始值（字符串类型、布尔类型或者数字类型）`来当作this的绑定对象，这个原始值会被转换成它的对象形式（也就是new String(..)、new Boolean(..)或者new Numer(..)），这通常被成为`装箱`
+
+**注意：**从this绑定的角度而言，apply(..)和call(..)是一样的，区别体现在其他参数上
+
+但是，`显示绑定`仍然无法解决之前提出的`绑定丢失的问题`
+
+###### 硬绑定
+
+显示绑定的一个变种可以解决这个问题：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var obj = {
+	a: 2
+}
+
+var bar = function(){
+	foo.call(obj);
+}
+
+bar();		// 2
+setTimeout(bar, 100);	// 2
+
+// 硬绑定的bar不可能再修改它的this
+bar.call(window);	// 2
+```
+
+我们创建了函数bar()，在它的内部手动调用了foo.call(obj)，因此强制把foo的this绑定到了obj上，但之后无论如何调用bar，他总会手动在obj上调用foo，这种绑定是一种显示的强制绑定，因此称之为`硬绑定`
+
+**典型场景：**
+
+1. 负责创建一个包裹函数，负责接受参数并返回值：
+
+   ```javascript
+   function foo(something){
+   	console.log(this.a, something);
+   	return this.a + something;
+   }
+   
+   var obj = {
+   	a: 2
+   };
+   
+   var bar = function(){
+   	return foo.apply(obj, arguments);
+   };
+   
+   var b = bar(3);		// 2, 3
+   console.log(b);		// 5
+   ```
+
+2. 创建一个可以重复使用的辅助函数：
+
+   ```javascript
+   function foo(something){
+   	console.log(this.a, something);
+   	return this.a + something;
+   }
+   
+   // 简单的辅助绑定函数
+   function bind(fn, obj){
+   	return function(){
+   		return fn.apply(obj, arguments);
+   	};
+   }
+   
+   var obj = {
+       a: 2
+   }
+   
+   var bar = bind(foo, obj);
+   
+   var b = bar(3);		// 2, 3
+   console.log(b);		// 5
+   ```
+
+   硬绑定是一种非常常用的模式，所以ES5提供了内置的方法，Function.prototype.bind，使用方法如下：
+
+   ```javascript
+   function foo(something){
+   	console.log(this.a, something);
+   }
+   
+   var obj = {
+   	a: 2
+   }
+   
+   var bar = foo.bind(obj);
+   
+   var b = bar(3);		// 2, 3
+   console.log(b);		// 5
+   ```
+
+   bind(..)会返回一个硬编码的新函数，会把指定的参数设置为this的上下文并调用
+
+   ###### API调用的“上下文”
+
+   第三方的许多函数，以及JavaScript语言和宿主环境中许多新的内置函数，都提供了一个可选的参数，通常被称为“上下文”(context)，其作用和bind(..)一样，确保了你的回调函数使用指定的this
+
+   举例：
+
+   ```javascript
+   function foo(el){
+   	console.log(el, this.id);
+   }
+   
+   var obj = {
+   	id: "awesome"
+   }
+   
+   // 调用foo(..)时把this绑定到obj
+   [1,2,3].forEach(foo, obj);
+   // 1 awesome 2 awesome 3 awesome
+   ```
+
+   这些函数实际上就是通过call(..)和apply(..)实现了显示绑定
+
+#### new绑定
+
