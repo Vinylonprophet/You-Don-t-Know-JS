@@ -2540,3 +2540,112 @@ this绑定的四条规则存在优先级之分
 毫无疑问，默认绑定的优先级是最低的
 
 先区分隐式和显式绑定：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var obj1 = {
+    a: 2,
+    foo: foo
+}
+
+var obj2 = {
+    a: 3,
+    foo: foo
+}
+
+obj1.foo();		// 2
+obj2.foo();		// 3
+
+obj1.foo.call(obj2);		// 3
+obj2.foo.call(obj1);		// 2
+```
+
+由此可见，**显式绑定**优先级更高
+
+new绑定和隐式绑定：
+
+```javascript
+function foo(){
+	this.a = something;
+}
+
+var obj1 = {
+	foo: foo
+}
+
+var obj2 = {};
+
+obj1.foo(2);
+console.log(obj1.a);	// 2
+
+obj1.foo.call(obj2, 3);
+console.log(obj2.a);	// 3
+
+var bar = new obj1.foo(4);
+console.log(obj1.a);	// 2
+cosnole.log(bar.a);		// 4
+```
+
+所以**new**优先级高
+
+目前看起来似乎是硬绑定比new绑定优先级更高，无法使用new来控制this：
+
+```javascript
+function foo(something){
+    this.a = something;
+}
+
+var obj1 = {};
+
+var bar = foo.bind(obj1);
+
+bar(2);
+console.log(obj1.a);		// 2
+
+var baz = new bar(3);
+console.log(obj1.a);		// 2
+console.log(baz.a);			// 3
+```
+
+出乎意料，并没有因为硬绑定而把obj1.a的值修改为3，而是修改了硬绑定（到obj1调用的）bar(..)的this，因为使用了new绑定，得到了名为baz的新对象，并且baz.a的值为3
+
+ 之前介绍的“裸”辅助函数bind是无法修改this绑定的，但是在ES5的bind(..)更为复杂，简单而言，也就是会判断硬绑定函数是否被new调用，如果是的话就会用新创建的this来替换硬绑定的this
+
+在new中使用硬绑定函数主要是预设一些参数，这样在使用new进行初始化时只需要传入其余的参数，bind(..)功能之一就是把除了第一个参数之外的其他参数都传给下层的函数（这种技术称为“部分应用”，是“柯里化”的一种）
+
+```javascript
+function foo(p1, p2){
+	this.val = p1 + p2;
+}
+
+var bar = foo.bind(null, "p1");
+
+var baz = new bar("p2")
+
+baz.val;		// p1p2
+```
+
+##### 判断this
+
+我们可以通过优先级来判断函数在某个调用位置应用的是哪条规则，按照下面的顺序来判断：
+
+1. 函数是否在new中调用（new绑定）？如果是的话，this绑定的是新创建的对象
+
+   var bar = new foo()
+
+2. 函数是否通过call、apply（显式绑定）或硬绑定调用？如果是的话，this绑定的是那个指定对象
+
+   var bar = foo.call(obj)
+
+3. 函数是否在某个上下文对象中调用（隐式绑定）？如果是的话，this绑定的是那个上下文对象
+
+   var bar = obj1.foo()
+
+4. 如果都不是的话，使用默认绑定。如果在严格模式下，就绑定到undefined，否则默认全局对象
+
+   var bar = foo()
+
+`不过凡事也总有例外`
