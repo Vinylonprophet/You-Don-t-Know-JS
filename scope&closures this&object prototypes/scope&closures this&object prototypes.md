@@ -2649,3 +2649,144 @@ baz.val;		// p1p2
    var bar = foo()
 
 `不过凡事也总有例外`
+
+#### 绑定例外
+
+某些场景下this的绑定行为会出乎意料，有时候认为应当是其他规则时，实际上应用的应该是默认规则
+
+##### 被忽略的this
+
+如果把null或undefined作为this的绑定对象传入call、apply、或者bind，这些值在调用的时候会被`忽略`，实际上运用的就是默认绑定规则：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var a = 2;
+
+foo.call(null);		// 2
+```
+
+那么什么情况下会传入null呢？
+
+一种常见的做法是使用apply(..)来“展开”一个数组，并当作参数传入一个函数，类似的，bind(..)可以对参数进行柯里化（预先设置一些参数），有时非常有用：
+
+```javascript
+function foo(a, b){
+	console.log("a: " + a + ", b: " + b);
+}
+
+// 把数组"展开"成参数
+foo.apply( null, [2, 3]);	// a: 2, b: 3
+
+// 使用bind(..)进行柯里化
+var bar = foo.bind( null, 2);
+bar(3);		// a: 2, b: 3
+```
+
+这两种方法都需要传入一个参数当作this的绑定对象，如果函数不关心this的话，仍需要`传入一个占位符`，这时null可能是一个不错的选择
+
+ES6中，可以使用...操作符来代替apply(..)来展开数组，foo(...[1, 2])和foo(1,2)是一样的，这样还可以避免不必要的this绑定
+
+然而，总是使用null来忽略this绑定会产生一些副作用，如果某个函数使用了this，那默认绑定规则会把this绑定到全局对象，这会导致不可预计的后果
+
+###### 更安全的this
+
+一种更安全的做法是传入一个对象，把this绑定到这个对象“不会对你的程序产生任何副作用”，我们创建一个“DMZ“对象——一个空的非委托的对象
+
+因为这个变量完全是一个空对象，可以使用Ф来表示，最简单的方法就是Object.create(null)，Object.create(null)和{}很像，但是并不会创建Object.prototype，所以比{}”更空“
+
+```javascript
+function foo(a, b){
+	console.log("a: " + a + ", b: " + b);
+}
+
+// 我们的DMZ空对象
+var Ф = Object.create(null);
+
+// 把数组展开成参数
+foo.apply(Ф, [2, 3]);		// a: 2, b: 3
+
+// 使用bind(..)进行柯里化
+var bar = foo.bind(Ф, 2);
+bar(3);		// a: 2, b: 3
+```
+
+Ф不仅让代码更安全，而且还提高了代码的可读性
+
+##### 间接引用
+
+有可能会有意或无意的创建一个函数的”间接引用“，这种情况下，调用这个函数会应用”默认绑定规则“
+
+间接引用最容易在赋值时发生：
+
+```javascript
+function foo(){
+	console.log(this.a);
+}
+
+var a = 2;
+var o = { a: 3, foo: foo };
+var p = { a: 4 };
+
+o.foo();		// 3
+(p.foo = o.foo)();		// 2
+```
+
+赋值表达式 p.foo = o.foo 的返回值就是目标函数的引用（即foo），所以这里就是默认绑定
+
+注意：决定this绑定对象的并不是调用位置是否处于严格模式，而是函数体是否处于严格模式。如果函数体处于严格模式，this会被绑定到undefined，否则this会被绑定到全局对象
+
+##### 软绑定
+
+之前我们看到过，硬绑定把this强制绑定到指定对象（除了new时），防止函数调用应用默认绑定规则，使用硬绑定之后就无法使用隐式绑定或显式绑定来修改this
+
+如果给默认绑定指定一个全局对象和undefined以外的值，那就可以实现和硬绑定相同的效果，同时保留隐式指定和显式绑定修改this的能力
+
+可以通过一种被称为软绑定的方法来实现我们想要的效果：
+
+```javascript
+if(!Function.prototype.softBind){
+	Function.prototype.softBind = function(obj){
+		var fn = this;
+		// 捕获所有curried参数
+		var curried = [].slice.call( arguments, 1);
+		var bound = function(){
+			return fn.apply(
+				(!this || this === (window || global)) ?
+					obj : this,
+				curried.concat.apply( curried, arguments )
+			);
+		};
+		bound.prototype = Object.create( fn.prototype );
+		return bound;
+	};
+}
+```
+
+除了软绑定，softBind(..)的其他原理和ES5内置的bind(..)类似，首先会检查调用时的this，如果this绑定到全局对象或者undefined，那就把指定的默认对象obj绑定到this，否则不会修改this
+
+例子：
+
+```javascript
+function foo(){
+	console.log("name: " + this.name);
+}
+
+var obj = { name: "obj" };
+var obj2 = { name: "obj2" };
+var obj3 = { name: "obj3" };
+
+var fooOBJ = foo.softBind( obj );
+
+fooOBJ();		// name: obj
+
+obj2.foo = foo.softBind( obj );
+obj2.foo();		// name: obj2
+
+fooOBJ.call(obj3);		// name: obj3
+
+setTimeout( obj2.foo, 10);		// name: obj
+```
+
