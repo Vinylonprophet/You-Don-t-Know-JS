@@ -2790,3 +2790,70 @@ fooOBJ.call(obj3);		// name: obj3
 setTimeout( obj2.foo, 10);		// name: obj
 ```
 
+#### this词法
+
+ES6有一种无法使用之前四条规则的特殊函数：**箭头函数**
+
+箭头函数不是function定义的，而是 => 定义的，箭头函数不适用四种规则，而是根据外层作用域来决定的
+
+```javascript
+function foo(){
+	return (a) => {
+		console.log( this.a );
+	}
+}
+
+var obj1 = {
+	a: 2
+};
+
+var obj2 = {
+	a: 3
+};
+
+var bar = foo.call( obj1 );
+bar.call(obj2);		// 2
+```
+
+foo()函数内部创建的箭头函数会捕获调用时的foo()的this，由于foo()绑定到obj1，bar的this也会绑定到obj1，箭头函数的绑定无法修改（new也不行）
+
+箭头函数常用于回调函数中，例如事件处理器或定时器：
+
+```javascript
+function foo(){
+	setTimeout( () => {
+		// 这里的this在词法上继承foo()
+		console.log(this.a);
+	}, 100);
+}
+
+var obj = {
+	a: 2
+}
+
+foo.call(obj);	// 2
+```
+
+箭头函数可以像bind(..)一样确保函数的this被绑定到指定对象，此外，重要性还体现在它用更常见的词法作用域取代了传统的this机制，ES6之前就已经在使用一种和箭头函数完全一样的模式
+
+```javascript
+function foo(){
+	var self = this;
+	setTimeout( function(){
+		console.log( self.a );
+	}, 100)
+}
+
+var obj = {
+	a: 2
+}
+
+foo.call( obj );
+```
+
+虽然self和this看起来都可以取代bind(..)，但是从本质上来说，它们更想替代的是this机制
+
+如果经常编写this风格的代码，但是绝大部分时候都会想使用 self = this 或者箭头函数来否定 this 机制，或许应当：
+
+1. 只使用词法作用域并完全抛弃错误this风格的代码
+2. 完全采用this风格，必要时使用bind(..)，尽量避免使用 self = this 和箭头函数
