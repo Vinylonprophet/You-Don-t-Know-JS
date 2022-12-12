@@ -2961,3 +2961,201 @@ console.log(strPimitive.charAt(3));		// m
 null 和 undefined 没有对应构造形式，只有文字形式，相反，Date只有构造，没有文字形式
 
 对于 Object、Array、Function、RegExp 来说，无论文字形式还是构造形式，都是对象，不是字面量
+
+Error对象很少在代码中显示创建，一般在抛出异常时被自动创建
+
+#### 内容
+
+对象的内容是由一些存储在特定命名位置的值组成的，称之为属性
+
+存储在对象容器内部是这些属性的名称，就像是指针(从技术的角度而言就像是引用)一样，指向这些值真正的存储位置
+
+思考：
+
+```javascript
+var myObject = {
+	a: 2
+};
+
+myObject.a;			// 2
+myObject["a"];		// 2
+```
+
+访问妈呀Object中a位置上的值，需要使用.操作符或[]操作符。
+
+.a通常被称为“属性访问”；["a"]通常被称为“键访问”，两种语法的主要区别在于：.操作符要求属性名满足标识符的命名规范，[".."]语法可以接受任意UTF-8/Unicode字符串作为属性名，比如可以["Super-fun!"]语法访问，但.操作符就不行
+
+此外，可以在程序中构造字符串：
+
+```javascript
+var myObject = {
+	a: 2
+};
+
+var idx;
+
+if(wantA) {
+	idx = "a";
+}
+
+console.log(myObject[idx]);		// 2
+```
+
+对象中，属性名永远都是字符串，虽然在`数组下标中使用的是数字，但是在对象属性中数字会被转换成字符串：`
+
+```javascript
+var myObject = { };
+
+myObject[true] = "foo";
+myObject[3] = "bar";
+myObject[myObject] = "baz";
+
+myObject["true"] = "foo";		// "foo"
+myObject["3"] = "bar";			// "bar"
+myObject["[Object Object]"];	// "baz"
+```
+
+##### 可计算属性名
+
+键访问可以使用myObject[prefix + name]，但使用文字形式来声明对象时这样做不行
+
+ES6增加了`可计算属性名`，可以在文字形式使用[]包裹一个表达式来当作属性名：
+
+```javascript
+var prefix = "foo";
+
+var myObject = {
+	[prefix + "bar"]: "hello",
+	[prefix + "baz"]: "world"
+};
+
+myObject["foobar"];		// hello
+myObject["foobaz"];		// world
+```
+
+可以算属性名最常用的场景是ES6的符号”Symbol“，不过简单来说，它们是一种新的基础数据类型，包含一个透明且无法预测的值（技术的角度而言可以说是一个字符串），一般不会用到符号的`实际值`，所以通常接触到的是符号的名称，比如Symbol.Something:
+
+```javascript
+var myObject = {
+	[Symbol.something]: "hello world"
+}
+```
+
+##### 属性和方法
+
+在JavaScript中，函数永远不会属于一个对象，所以把对象内部引用的函数成为方法有点不妥
+
+有些函数有this引用，确实也会只想调用位置的对象引用，但是本质上来说也没有把一个函数变成一个方法，this是根据位置动态绑定的，所以函数和对象的关系也是间接关系
+
+属性访问的函数和其他函数没有任何区别：
+
+```javascript
+function foo(){
+    console.log("foo");
+}
+
+var someFoo = foo;		// 对foo变量的引用
+
+var myObject = {
+    someFoo: foo
+};
+
+foo;					// function foo(){..}
+
+someFoo;				// function foo(){..}
+
+myObject.soemFoo;		// function foo(){..}
+```
+
+someFoo和myObject.someFoo只是对于同一个函数的不同引用，并不能说明这个函数是特别的或者”属于“某个对象。如果foo()定义时在内部有一个this引用，那么这两个函数引用的唯一区别就是myObject.someFoo中的this会被绑定到一个对象，但是上述无论哪种都不能被称为”方法“
+
+`注意：`ES6新增了super引用，一般来说会被用在class中，可以参考附录A，super的行为可更有理由把super绑定的函数称为”方法“，
+
+即使在对象文字中声明一个函数表达式，也不会”属于“这个对象——只是对于相同函数对象的多个引用
+
+注意：
+
+- super()作为函数代表父类的构造函数
+- super()作为对象，指向父类的原型对象
+
+```javascript
+var myObject = {
+	foo: function(){
+		console.log("foo");
+	}
+}
+
+var someFoo = myObject.foo;
+
+someFoo;			// function foo(){..}
+
+myObject.foo;		// function foo(){..}
+```
+
+##### 数组
+
+数组有一套更加结构化的值存储机制（不过依然不限制值的类型），数组期望的是数值下标，也就是值存储位置
+
+```javascript
+var myArray = [ "foo", 42, "bar" ];
+
+myArray.length;		// 3
+myArray[0];			// "foo"
+myArray[2];			// "bar"
+```
+
+`数组也是对象`，所以虽然下标都是整数，但是仍然可以给数组添加属性：
+
+```javascript
+var myArray = [ "foo", 42, "bar" ];
+
+myArray.baz = "baz";
+
+myArray.length;			// 3
+
+myArray.baz;			// "bar"
+```
+
+可以看到虽然添加了命名属性，但length值并未发生变化
+
+注意：如果试图向数组添加一个属性，但属性名看起来像数字，那么会变成一个数值下标：
+
+```javascript
+var myArray = [ "foo", 42, "bar" ];
+
+myArray.["3"]= "baz";
+
+myArray.length;			// 4
+
+myArray[3];				// "baz"
+```
+
+##### 复制对象（涉及浅拷贝和深拷贝）
+
+JavaScript最常见的问题就是复制一个对象
+
+思考以下代码：
+
+```javascript
+function anotherFunction() { /*..*/ }
+
+var anotherObject = {
+    c: true
+};
+
+var anotherArray = [];
+
+var myObject = {
+    a: 2,
+    b: anotherObject,		// 引用，不是复制！
+    c: anotherArray,		// 另一个引用
+    d: anotherFunction
+};
+
+anotherArray.push( anotherObject, myObject );
+```
+
+如何准确的表示Object的复制呢？
+
+应该判断`浅拷贝`还是`深拷贝`：
+
