@@ -3159,3 +3159,288 @@ anotherArray.push( anotherObject, myObject );
 
 应该判断`浅拷贝`还是`深拷贝`：
 
+- 浅拷贝：a的值会复制旧对象的a值，b，c，d三个属性都是引用
+- 深拷贝：除了复制myObject，还会复制anotherObject和anotherArray，所以anotherArray引用了anotherObject和myObject，又需要复制myObject，会由于循环引用导致死循环
+
+有些人也会通过"toString()"来序列化一个函数的源代码
+
+对于JSON安全的对象而言，有一种复制方法：
+
+```javascript
+var newObj = JSON.parse( JSON.stringify( someObj ) );
+```
+
+这种方法需要保证对象是JSON安全的，所以只用于**部分情况**
+
+相比深拷贝，浅拷贝容易多，ES6提供了 **Object.assign(..)** 方法来实现浅拷贝，第一个参数是目标对象，第二个以及之后还可以跟一个或多个源对象，它会遍历一个或多个源对象的所有可枚举(enumberable)的自有键(owned key)并把他们`复制（使用 = 操作符赋值）到目标对象`，最后返回目标对象，像这样：
+
+```javascript
+var newObj = Object.assign( {}, myObject );
+
+newObj.a;										// 2
+newObj.b === anotherObject;						// true
+newObj.c === anotherArray;						// true
+newObj.d === anotherObanotherFunctionject;		// true
+```
+
+**补充：**下面介绍”属性描述符“以及Object.defineProperty(..)的用法，但是注意Object.assign(..)使用**=**操作符来赋值的，所以源对象的一些特性（比如writable）不会被复制到目标对象
+
+##### 属性操作符
+
+ES5之前，JavaScript没有提供可以直接检测属性特性的方法，ES5开始，所有属性都具备了属性描述符
+
+思考以下代码:
+
+```javascript
+var myObject = {
+	a: 2
+};
+
+Object.getOwnPropertyDescriptor( myObject, "a" );
+// {
+// 		value: 2,
+// 		writable: true,
+// 		enumerable: true,
+// 		configurable: true
+// }
+```
+
+这个普通的对象属性对应的属性描述符（也可以称为“数据描述符”），除了value，还有writable，enumerable，configurable
+
+也可以使用**defineProperty(..)**添加一个新属性或修改一个已有属性并对特性进行配置
+
+例子：
+
+```javascript
+var myObject = { };
+
+Object.defineProperty( myObject, "a", {
+	value: 2,
+	writable: true,
+	configurable: true,
+	enumberable: true
+} );
+
+myObject.a;		// 2
+```
+
+**除非修改属性描述符，不然一般不用defineProperty(..)**
+
+###### 1. Writable
+
+writable决定了是否可以修改属性的值
+
+代码：
+
+```javascript
+var myObject = { };
+
+Object.defineProperty( myObject, "a", {
+	value: 2,
+	writable: false,
+	configurable: true,
+	enumberable: true
+})
+
+myObject.a = 3;
+
+myObject.a;		// 2
+```
+
+严格模式下：
+
+```javascript
+"use strict";
+
+var myObject = { };
+
+Object.defineProperty( myObject, "a", {
+	value: 2,
+	writable: false,
+	configurable: true,
+	enumberable: true
+})
+
+myObject.a = 3;		// TypeError
+```
+
+TypeError表示无法修改一个不可写的属性
+
+**注意：**之后会介绍getter和setter，如果wriable: false，相当于定义了一个空操作setter。严格来说，如果要和writable: false一致，那么setter被调用时应该抛出一个TyperError错误
+
+###### 2. Configurable
+
+defineProperty(..)方法来修改属性描述符:
+
+```javascript
+var myObject = {
+	a: 2
+};
+
+myObject.a = 3;
+myObject.a;		// 3
+
+Object.defineProperty( myObject, "a", {
+	value: 4,
+	writable: true,
+	configurable: false,
+	enumberable: true
+})
+
+myObject.a;			// 4
+myObject.a = 5;
+myObject.a;			// 5
+
+Object.defineProperty( myObject, "a", {
+	value: 6,
+	writable: true,
+	configurable: true,
+	enumberable: true
+});					// TypeError
+```
+
+configurable是**单向操作**，无法撤销！但还是可以把writable状态从true改为false，但是无法从false改成true
+
+除了无法修改，还会禁止`删除` **(delete)** 这个属性：
+
+```javascript
+var myObject = {
+	a: 2
+};
+
+myObject.a;		// 2
+
+delete myObject.a;
+myObject.a;		// undefined
+
+Object.defineProperty( myObject, "a", {
+	value: 2,
+	writable: true,
+	configurable: false,
+	enumberable: true
+});
+
+myObject.a;		// 2
+delete myObject.a;
+myObject.a;		// 2
+```
+
+如你所见delete失败了，因为属性是不可配置的，本例中delete只是用来直接删除对象的属性，如果对象的某个属性是某个对象/函数的最后一个引用者，那么delete之后，这个未引用的对象/函数就可以被垃圾回收。但是不能把delete看成一个释放内存的工具，仅仅是删除对象属性的操作
+
+###### 3. Enumberable
+
+如果把对象的enumberable设置成false，这个属性就不会出现在枚举中
+
+##### 不变性
+
+有时候希望属性和对象是不可改变的，在ES5中可以通过很多方法来实现
+
+所有的方法创建都是浅不变性，只会影响到目标对象和它的直接属性，如果目标对象引用了其他对象（数组、对象、函数，等），其他对象的内容不受影响，仍然可变：
+
+```javascript
+myImmutableObject.foo;			// [1, 2, 3]
+myImmutableObject.foo.push(4);
+myImmutableObject.foo;          // [1, 2, 3, 4]
+```
+
+如果myImmutableObject已经被创建而且是不变的，但是为了保护myImmutableObject.foo，还需要使用下面的方法让foo也不可变
+
+**补充：**JavaScript中很少需要深不变性，如果需要这样做的时候，可以先思考一下程序的设计是否合理，让它更好应对对象值的改变
+
+###### 1. 对象常量
+
+结合 writable: false 和 configurable: false 就可以创建一个真正的常量属性（不可修改、定义或者删除）：
+
+```javascript
+var myObject = { };
+
+Object.definePropery( myObject, "FAVORITE_NUMBER", {
+	value: 4,
+	writable: false,
+	configurable: false
+} );
+```
+
+###### 2. 禁止扩展
+
+如果想禁止一个对象添加新属性并且保留已有属性，可以使用Object.preventExtensions(..)：
+
+```javascript
+var myObject = { };
+
+Object.preventExtensions( myObject );
+
+myObject.b = 3;
+myObject.b;		// undefined
+```
+
+非严格模式下，创建b会静默失败；严格模式下，抛出TypeError错误
+
+###### 3. 密封
+
+Object.seal(..)会创建一个“密封”对象，实际上会在现有对象调用Object.preventExtensions(..)并且把`所有`现有属性标记为configurable: false
+
+密封之后不仅不能添加新属性，也不能重新配置或删除任何现有属性（虽然可以修改属性的值）
+
+###### 4. 冻结
+
+Object.freeze(..)会创建一个冻结对象，这个方法实际上会在一个现有对象上调用Object.seal(..)并且把所有属性标记为writable: false，这样就无法修改它们值
+
+这个方法是对象上的级别最高的不可变性，会禁止对于对象本身及其任意直接属性的修改
+
+可以“深度冻结”一个对象，首先在这个对象上使用Object.freeze(..)，然后遍历它引用的所有对象并在这些对象上调用Object.freeze(..)，但是一定要小心，这样可能会冻结其他（共享）独享【此处我理解为引用一些共有的函数】
+
+##### [[Get]]
+
+思考下列代码：
+
+```javascript
+var myObject = {
+	a: 2
+}
+
+myObject.a;		// 2
+```
+
+语言规范中，实际上是myObject.a在myObject实现了[[Get]]操作（有点像函数调用：[[ Get ]] () )，对象默认的内置[[Get]]操作首先在对象中查找是否有名称相同的属性，如果找到就会返回这个属性的值
+
+如果没找到名称相同的属性，按照定义会执行另一种行为，也就是遍历原型链
+
+如果无论如何都没找到名称相同的属性，那么[[Get]]会返回值undefined:
+
+```javascript
+var myObject = {
+	a: 2
+}
+
+myObject.b;		// undefined
+```
+
+**注意：**这种方法和访问变量不一样，如果引用了一个当前词法作用域中不存在的变量，并不会像对象属性一样返回undefined，而是会抛出一个ReferenceError异常：
+
+```javascript
+var myObject = {
+	a: undefined
+}
+
+myObject.a;		// undefined
+myObject.b;		// undefined
+```
+
+从返回值的角度：这两个引用没有区别——都返回了undefined
+
+从底层的角度：底层的[[Get]]操作对Object.b进行了更复杂的处理
+
+稍后会介绍如何区分
+
+##### [[Put]]
+
+有获取属性的[[Get]]，就一定有对应的[[Put]]，[[Put]]实际的行为取决于很多因素，包括对象中是否存在这个属性
+
+如果存在这个属性，[[Put]]大致会检查下面内容：
+
+1. 属性是否是访问描述符（参考下面的Getter和Setter）？如果是并且存在Setter就调用Setter
+2. 属性的writable是否是false？是的话，非严格模式下失败，严格模式下抛出TypeError
+3. 如果都不是，将值设为属性值
+
+##### Getter和Setter
