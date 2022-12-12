@@ -2860,4 +2860,104 @@ foo.call( obj );
 
 
 
-## 后续：深层总结
+### 对象
+
+函数调用位置的不同会造成this绑定对象的不同，但是对象到底是什么呢？
+
+#### 语法
+
+对象的两种定义形式：**文字形式** 和 **构造形式**
+
+文字形式：
+
+```javascript
+var myObj = {
+	key: value
+	// ..
+}
+```
+
+构造形式：
+
+```javascript
+var myObj = new Object();
+myObj.key = value;
+```
+
+`唯一区别：` 文字形式可以添加多个键 / 值，构造形式必须逐个添加属性
+
+#### 类型
+
+六种主要类型：
+
+- string
+- number
+- boolean
+- null
+- undefined
+- object
+
+简单基本类型（上述除了object之外都是）本身不是对象，null有时会被当作一种对象类型，但是这只是语言的bug，（typeof null会返回“object”），但是null还是基本类型
+
+为什么 typeof null 会返回object。因为JavaScript中二进制前三位都为0会被判为object，null的二进制全为0，所以会返回object
+
+实际上，JavaScript中有许多特殊的对象子类型，可以称之为复杂基本类型
+
+`函数`就是对象的一个子类型（技术的角度而言就是“可调用对象”）
+
+`数组`也是对象的一种类型，具备额外的行为
+
+##### 内置对象
+
+JavaScript还有一些对象子类型，通常被称为内置对象：
+
+- String
+- Number
+- Boolean
+- Object
+- Function
+- Array
+- Date
+- RegExp（正则表达式）
+- Error
+
+JavaScript中实际上是一些内置函数，内置函数可以当作构造函数来使用，从而可以构造一个对应子类型的新对象，比如:
+
+```javascript
+var strPimitive = "I'm a string";
+typeof strPimitive;					// "string"
+strPimitive instance of String;		// false
+
+var strObject = new String("I'm a string");
+typeof strObject;					// "object"
+strObject instance of String;		// true
+
+// 检查 sub-type 对象
+Object.prototype.toString.call(strObject);		// [object String]
+```
+
+可以认为子类型在内部借用了Object中的toString(..)方法，从代码中可以看出strObject是String构造函创建的一个对象
+
+原始值 "I'm a string" 不是一个字面量而是一个对象，是一个不可变的值，如果需要在字面量上进行一系列操作，需要将其转换为 String 对象
+
+有时候语言会自动把字面量转化为一个String对象，不需要显式创建一个对象，大多数时候能使用文字形式就不要使用构造形式
+
+思考：
+
+```javascript
+var strPimitive = "I am a string";
+
+console.log(strPimitive.length);		// 13
+
+console.log(strPimitive.charAt(3));		// m
+```
+
+之所以可以在字面量上访问属性和方法，是因为**引擎自动把字面量转换成String对象，所以可以访问属性和方法**
+
+数字字面量，使用类似42.359.toFixed(2)方法，会把42转换成 new Number(42)
+
+布尔字面量同样如此
+
+null 和 undefined 没有对应构造形式，只有文字形式，相反，Date只有构造，没有文字形式
+
+对于 Object、Array、Function、RegExp 来说，无论文字形式还是构造形式，都是对象，不是字面量
