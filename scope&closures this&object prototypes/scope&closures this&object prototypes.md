@@ -3476,4 +3476,74 @@ myObject.a;		// 2
 myObject.b;		// 4
 ```
 
-不管是对象文字语法的get a() { .. }，还是defineProperty(..)的显式定义，二者都会在对象中创建一个`不包含值得属性`，对于这个属性的访问会自动`调用一个隐藏函数`，它的返回值会被当作前属性访问的返回值：
+不管是对象文字语法的get a() { .. }，还是defineProperty(..)的显式定义，二者都会在对象中创建一个`不包含值的属性`，对于这个属性的访问会自动`调用一个隐藏函数`，它的返回值会被当作前属性访问的返回值：
+
+```javascript
+var myObject = {
+    // 给 a 定义一个getter
+    get a() {
+        return 2;
+    }
+}
+
+myObject.a = 3;
+
+myObject.a;		// 2
+```
+
+只定义了a的getter，所以对a的值进行设置时set操作会忽略赋值操作，不会抛出错误，即使有合法的setter，由于我们自定义的getter只会返回2，所以set操作也没有意义
+
+为了让属性更加合理，还应该定义setter，setter会覆盖单个属性默认的[[put]]，通常来说getter和setter是成对出现的：
+
+```javascript
+var myObject = {
+	// 给 a 定义一个getter
+	get a() {
+		return this._a_;
+	},
+	
+	// 给 a 定义一个setter
+	set a(val){
+		this._a_ = val * 2;
+	}
+};
+
+myObject.a = 2;
+
+myObject.a;		// 4
+```
+
+本例中，把赋值操作中的值2存储到另一个变量 _ a _ ，名称 _ a _ 只是惯例，没有任何特殊的行为——和其他普通属性一样
+
+##### 存在性
+
+myObject.a的返回值可能是undefined，这个值可能是属性中的undefined，也可能因为不存在而返回undefined，那么如何区分呢？
+
+可以在不访问属性值的情况下判断对象中是否存在这个属性：
+
+```javascript
+var myObject = {
+	a: 2
+};
+
+("a" in myObject);		// true
+("b" in myObject);		// false
+
+myObject.hasOwnProperty("a");		// true
+myObject.hasOwnProperty("b");		// false
+```
+
+in会检查属性是否在对象以及其[[prototype]]原型链，相比之下，hasOwnProperty(..)只会检查属性是否在myObject对象中，不会检查原型链
+
+所有普通对象都会通过对于Object.prototype来访问，但是有的对象会没有（比如：Object.create(null)），这种情况下，hasOwnProperty(..)就会失败
+
+这时，有一种更加强硬的方法解决：Object.prototype.hasOwnProperty(myObject, "a")
+
+注意：in操作符可以检查容器内是否有某个值，但实际上检查的是某个属性名是否存在，在数组中这个区别很重要
+
+```javascript
+4 in [2, 4, 6];		// false
+```
+
+属性中有4，但属性名没有，属性名是0，1，2
+
