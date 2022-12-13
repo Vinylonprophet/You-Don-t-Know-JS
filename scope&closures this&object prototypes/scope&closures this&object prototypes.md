@@ -3444,3 +3444,36 @@ myObject.b;		// undefined
 3. 如果都不是，将值设为属性值
 
 ##### Getter和Setter
+
+[[Put]]和[[Get]]分别可以控制属性的设置和获取
+
+在ES5中可以使用getter和setter部分改写默认操作，但只能在单个属性而不是整个对象上。getter是一个隐藏函数，会在获取属性值时调用，setter也是隐藏函数，会在设置属性值时调用
+
+当给一个属性定义getter或setter或两者，这个叫做“访问描述符”，访问描述符会忽略value和writabe特性，取而代之关心set和get（还有configurable和enumberable）特性
+
+思考下列代码：
+
+```javascript
+var myObject = {
+	get a() {
+		return 2;
+	}
+};
+
+Object.defineProperty(
+	myObject,
+	"b",
+	{
+		get: function(){
+			return this.a*2;
+			
+			enumberable: true
+		}
+	}
+);
+
+myObject.a;		// 2
+myObject.b;		// 4
+```
+
+不管是对象文字语法的get a() { .. }，还是defineProperty(..)的显式定义，二者都会在对象中创建一个`不包含值得属性`，对于这个属性的访问会自动`调用一个隐藏函数`，它的返回值会被当作前属性访问的返回值：
