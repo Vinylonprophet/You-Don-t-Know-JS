@@ -3654,3 +3654,103 @@ every(..)和some(..)类似于for循环中的break，提前终止遍历
 
 那么如果 **直接遍历值而不是下标** 呢？
 
+**使用ES6中的用来遍历数组的 `for...of`循环语法**
+
+```javascript
+var myArray = [ 1, 2, 3];
+
+for(var v of myArray){
+	console.log(v);
+}
+
+// 1
+// 2
+// 3
+```
+
+for...of循环首先会向被访问对象请求一个迭代器对象，然后通过调用迭代器对象的next()方法来遍历所有返回值
+
+数组有内置@@iterator，因此 for...of 可以直接应用在数组上，内置的@@iterator来手动遍历数组，工作原理：
+
+```javascript
+var myArray = [ 1, 2, 3 ];
+var it = myArray[Symbol.iterator]();
+
+it.next();		// { value: 1, done: false }
+it.next();		// { value: 2, done: false }
+it.next();		// { value: 3, done: false }
+it.next();		// { value: undefined, done: true }
+```
+
+**注意：**这里使用ES6中符号的Symbol.iterator来获取对象的@@iterator内部属性，引用iterator的特殊属性时要使用符号名，而不是符号包含的值，这里是`返回迭代器对象的函数`
+
+value是当前的值，done是布尔值（表示是否还有可以遍历的值）
+
+数组和普通的对象的区别：普通的对象没有内置的@@iterator，所以无法自动完成for...of
+
+当然也可以给任何想遍历的对象定义@@iterator:
+
+```javascript
+var myObject = {
+	a: 2,
+	b: 3
+};
+
+Object.defineProperty( myObject, Symbol.iterator, {
+	enumberable: false,
+	writable: false,
+	configurable: true,
+	value: function() {
+		var o = this;
+		var idx = 0;
+		var ks = Object.keys(o);
+		return {
+			next: function(){
+				return {
+					value: o[ks[idx++]],
+					done: (idx > ks.length)
+				};
+			}
+		};
+	}
+} );
+
+// 手动便利 myObject
+var it = myObject[Symbol.iterator]();
+it.next();	// { value: 2, done: false }
+it.next();	// { value: 3, done: false }
+it.next();	// { value: undefined, done: false }
+
+// for...of遍历object
+for(var v of myObject){
+	console.log(v);
+}
+// 2
+// 3
+```
+
+也可以定义一个”无限“迭代器：
+
+```javascript
+var randoms = {
+	[Symbol.iterator]: function() {
+		return {
+			next: function() {
+				return {
+					value: Math.random()
+				};
+			}
+		}
+	}
+}
+
+var randoms_pool = [];
+for(var n of randoms){
+	randoms_pool.push(n);
+	
+	// 防止无限循环被挂起
+	if(randoms_pool.length === 100)
+	break;
+}
+```
+
