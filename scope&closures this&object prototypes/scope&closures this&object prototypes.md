@@ -3807,4 +3807,80 @@ stack必须先实例化才能操作
 
 ##### 构造函数
 
-类实例
+类实例是一个特殊的类方法构造的，这个方法名和类名相同，被称为构造函数
+
+```javascript
+class GoolGuy {
+	specialTrick = nothing
+	
+	GoolGuy( trick ){
+		specialTrick = trick
+	}
+	
+	showOff(){
+		output("Here's my trick: ", specialTrick)
+	}
+}
+```
+
+可以调用类构造函数来生成一个GoolGuy实例：
+
+```javascript
+Joe = new GoolGuy("jumping rope")
+
+Joe.showOff()		// Here's my trick: jumping rope
+```
+
+注意，GoolGuy有一个CoolGuy()构造函数，执行new GoolGuy()时实际上调用的就是它，构造函数会返回一个对象，之后可以在这个对象上调用showOff()，来输出指定CoolGuy的特长
+
+构造函数大多数都需要用new来调用，这样引擎才知道你想要构造一个新的类实例
+
+#### 类的继承
+
+子类相对于父类而言是一个独立且完全不同的类，子类会包含父类行为的原始副本，但也可以重写所有继承的行为甚至定义新行为
+
+父类和子类不是实例，我们需要根据他们去进行实例化
+
+例子：
+
+```
+class Vehicle {
+	engines = 1
+	
+	ignition(){
+		output("Turning on my engine.")
+	}
+	
+	drive(){
+		igintion();
+		output("Steering and moving forward!")
+	}
+}
+
+class Car inherits Vehicle {
+	wheels = 4
+	
+	drive() {
+		inherited: drive()
+		output("Rolling on all", wheels, "wheels!")
+	}
+}
+
+class SpeedBoat inherits Vehicle {
+	engines = 2
+	
+	igition() {
+		output("Turning on my ", engines, " engines.")
+	}
+	
+	pilot() {
+		inherited: drive()
+		output("Speeding through the water with ease!")
+	}
+}
+```
+
+**注意：**为了方便理解并缩短代码，我们省略了这些类的构造函数
+
+##### 多态
+
