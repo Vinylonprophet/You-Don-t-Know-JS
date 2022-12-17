@@ -3884,3 +3884,5 @@ class SpeedBoat inherits Vehicle {
 
 ##### 多态
 
+预计今天实体书全部看完并过一遍（所以此处的笔记部分暂定）
+
