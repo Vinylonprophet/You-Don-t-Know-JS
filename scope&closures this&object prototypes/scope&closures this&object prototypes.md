@@ -3843,7 +3843,7 @@ Joe.showOff()		// Here's my trick: jumping rope
 
 例子：
 
-```
+```javascript
 class Vehicle {
 	engines = 1
 	
@@ -3884,5 +3884,79 @@ class SpeedBoat inherits Vehicle {
 
 ##### 多态
 
-预计今天实体书全部看完并过一遍（所以此处的笔记部分暂定）
+Car重写了继承自父类的drive()的方法，之后Car调用了inherited:drive()方法，说明Car可以引用继承来自原始dirve()方法，快艇同样如此
+
+这个技术被成为`多态`或`虚拟多态`，在本例中更恰当的是`相对多态`
+
+**相对多态：**任何方法都可以引用继承层次中高的方法，之所以说“相对”是因为我们并不会定义想要访问的绝对继承层次（或者说类），而是使用`相对引用“查找上一层”`
+
+许多语言中可以使用super来替代本例中的inherited，它的含义是“超类”，表示当前类的父类/祖先类
+
+多态的另一个方面，在继承链不同层次中`一个方法可以被多次定义`，当调用方法时会自动选择适合的定义
+
+上述例子就有这样的情景：drive()被定义在Vehicle和Car中，ignition()被定义在Vehicle和SpeedBoat中
+
+在ignition()中可以看到，pilot()通过相对多态引用了Vehicle中的drive()，但是那个drive()通过名字引用了ignition()方法
+
+引擎会使用SpeedBoat的ignition()，如果直接实例化Vehicle类然后调用它的drive()，那引擎用的就是Vehicle中的ignition()
+
+换而言之，ignition()方法定义的多态性却决于在哪个类的实例引用
+
+子类也可以相对引用它继承的父类，这种相对引用被称为super
+
+`子类对继承的一个方法重写，不会影响父类中的方法`
+
+`多态并不表示子类和父类有关连，类的继承其实就是复制`
+
+##### 多重继承
+
+JavaScript不提供多重继承
+
+#### 混入
+
+在继承和实例化，JavaScript对象不会自动执行复制，简单来说，JavaScript中只有对象，`并不存在可以被实例化的类`，一个对象并不会被复制到其他对象，它们会被关联起来
+
+JavaScript模拟类的复制行为，这个叫做混入：**显式** 和 **隐式**
+
+##### 显示混入
+
+我们需要手动实现复制功能，在许多库和框架中被称为extend(..)，为了方便理解，我们称之为mixin(..)
+
+```javascript
+function mixin( sourceObj, targetObj ) {
+    for( var key in sourceObj) {
+        if(!(key in targetObj)){
+            targetObj[key] = sourceObj[key];
+        }
+    }
+    
+    return targetObj;
+}
+
+var Vehicle = {
+    engines: 1,
+    
+    ignition: function() {
+        console.log("Turning on my engine.");
+    },
+    
+    drive: function() {
+        this.ignition();
+        console.log("Streering and moving forward!");
+    }
+};
+
+var Car = mixin( Vehicle, {
+    wheels: 4,
+    
+    drive: function() {
+        Vehicle.drive.call(this);
+        console.log(
+        	"Rolling on all" + this.wheels + " wheels!"
+        );
+    }
+});
+```
+
+注意：这里处理的是对象而不是类
 
