@@ -4075,3 +4075,31 @@ myCar.drive();
 
 注意：调用new Car()会创建一个新对象绑定到Car的this上，所以最初创建的car会被丢弃，因此可以不使用new关键字调用Car()，这样得到的结果一样，但可以避免创建并丢弃多余对象
 
+##### 隐式混入
+
+隐式混入和之前的显式伪多态很想，也具备同样的问题（复制的是函数引用）
+
+```javascript
+var Something = {
+	cool: function(){
+		this.greeting = "Hello World";
+		this.count = this.count ? this.count + 1 : 1;
+	}
+};
+
+Something.cool();
+Something.greeting;		// "Hello World"
+Something.count;		// 1
+
+var Another = {
+	cool: function(){
+		Something.cool.call(this);
+	}
+};
+
+Another.cool();
+Another.greeting;		// "Hello World"
+Another.count;			// 1 (count不是共享状态)
+```
+
+这里用的是this的隐式绑定，Something.cool.call(this)这行代码使函数在Another的上下文都调用了Something.cool()，但仍无法避免相对引用
