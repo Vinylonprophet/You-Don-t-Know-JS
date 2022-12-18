@@ -3960,3 +3960,118 @@ var Car = mixin( Vehicle, {
 
 注意：这里处理的是对象而不是类
 
+Car中的属性ignition只是从Vehicle中复制过来对ignition()的函数的引用
+
+###### 再说多态
+
+**显式多态：**Vehicle.drive.call(this)
+
+**相对多态：**inherited: drive()
+
+ES6之前没有相对多态的机制，所以由于Car和Vehicle中都有drive()，为了指明调用对象，必须使用绝对引用，通过名称显式指定Vehicle对象并调用
+
+###### 混合复制
+
+```javascript
+function mixin( sourceObj, targetObj ) {
+    for( var key in sourceObj) {
+        if(!(key in targetObj)){
+            targetObj[key] = sourceObj[key];
+        }
+    }
+    
+    return targetObj;
+}
+```
+
+之前我们是在目标对象初始化之后（ **体现在target初始化自带新内容** ）才进行复制的，因此一定要小心不要覆盖目标对象的原有属性
+
+如果先复制，再重写（新内容），这样效率会低：
+
+```javascript
+function mixin( sourceObj, targetObj) {
+    for( key in sourceObj) {
+        targetObj[key] = sourceObj[key];
+    }
+    
+    return targetObj;
+}
+
+var Vehicle = {
+    engines: 1,
+    
+    ignition: function() {
+        console.log("Turning on my engine.");
+    },
+    
+    drive: function() {
+        this.ignition();
+        console.log("Streering and moving forward!");
+    }
+};
+
+var Car = minxin(Vehicle, {});
+
+mixin({
+    wheels: 4,
+    
+    drive: function() {
+        Vehicle.drive.call(this);
+        console.log(
+        	"Rolling on all" + this.wheels + " wheels!"
+        );
+    }
+}, Vehicle)
+```
+
+这个复制并不能完全模拟面向类语言中的复制，因为引用的是同一个函数
+
+**JavaScript**复制共享函数的引用，如果修改了共享函数的对象，比如：ignition()，那么Vehicle和Car都会受到影响
+
+如果在使用混入时感觉越来越困难，那么就应该停止使用它
+
+###### 寄生继承
+
+显示混入另一种变体叫做寄生继承，既是显式又是隐式：
+
+```javascript
+function Vehicle(){
+	this.engines = 1
+}
+
+Vehicle.prototype.ignition = function(){
+	console.log("Turning on my engine.");
+};
+
+Vehicle.prototype.drive = function(){
+    this.ignition();
+	console.log("Steering and moving forward!");
+};
+
+// "寄生类" Car
+function Car() {
+	var car = new Vehicle();
+	
+	car.wheels = 4;
+	
+	// 保存Vehicle::drive()的特殊引用
+	var vehDrive = car.drive;
+	
+	// 重写Vehicle::drive()
+	car.drive = function() {
+		vehDrive.call(this);
+		console.log("Rolling on all " + this.wheels + " wheels!")
+	}
+	
+	return car;
+}
+
+var myCar = new Car();
+
+myCar.drive();
+```
+
+先复制一份Vehicle父类的定义，然后混入子类的定义（如果需要的话保留到父类的特殊引用），然后用这个符合对象构建实例
+
+注意：调用new Car()会创建一个新对象绑定到Car的this上，所以最初创建的car会被丢弃，因此可以不使用new关键字调用Car()，这样得到的结果一样，但可以避免创建并丢弃多余对象
+
