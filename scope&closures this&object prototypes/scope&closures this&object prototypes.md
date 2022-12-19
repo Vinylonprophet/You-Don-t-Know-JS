@@ -4110,7 +4110,7 @@ Another.count;			// 1 (count不是共享状态)
 
 之前多次提到[[prototyoe]]链，下面开始介绍
 
-##### [[Prototype]]
+#### [[Prototype]]
 
 JavaScript中的对象有一个特殊的[[prototype]]内置属性，也就是对于`其他对象的引用`，几乎所有的对象在创建[[prototype]]属性都会被赋予一个非空值
 
@@ -4160,13 +4160,13 @@ for(var k in myObject){
 
 当你通过各种语法进行属性查找时都会查找[[prototype]]链，直到找到属性或者查找完整条原型链
 
-###### Object.prototype
+##### Object.prototype
 
 所有普通的[[prototype]]链最终都会指向内置的Object.prototype，可以理解为[[prototype]]链的`顶端`使Object.prototype对象，所以包含JavaScript许多通用功能
 
 比如：.toString(..)、.valueOf(..)、.hasOwnProperty(..)、.isPrototypeOf(..)
 
-###### 属性设置和屏蔽
+##### 属性设置和屏蔽
 
 完整的讲述一下给一个对象设置属性：
 
@@ -4222,4 +4222,99 @@ myObject.hasOwnProperty("a");		// true
 hasOwnProperty：只检查是否在对象中
 
 **解读：**myObject.a++相当于myObject.a = myObject.a + 1，`++操作先通过[[Prototype]]查找属性a并且从anotherObject.a获取当前属性值2，再给这个值+1，接着用[[Put]]将值3赋给myObject中新创建的屏蔽属性a`
+
+#### “类”
+
+JavaScript只有对象，可以不通过类创建，所以才是真正意义上的面向对象
+
+##### "类函数"
+
+JavaScript中有个无耻的行为就是：模仿类
+
+所有**函数**默认都会拥有一个名为prototype的**公有且不可枚举**的属性，会指向另一个对象：
+
+```javascript
+function Foo(){
+	// ...
+}
+
+Foo.prototype;	// { }
+```
+
+这个对象通常被称为Foo的原型，但是这个术语实际上会带来误导
+
+抛开名字不谈，这个对象到底是什么？
+
+**最直接的解释是：**调用new Foo()创建的每个对象最终都会被[[Prototype]]链接到"Foo.prototype"对象
+
+验证一下：
+
+```javascript
+function Foo(){
+	// ...
+}
+
+var a = new Foo();
+
+Object.getPrototypeOf(a) === Foo.prototype;		// true
+```
+
+getPrototypeOf()返回指定对象的原型
+
+调用new Foo()会创建a，把a链接到Foo.prototype所指向的对象
+
+**区别：**
+
+- 面向类：类可以被复制（或者实例化）多次，之所以会这样是因为实例化（或继承）一个类就意味着把类的行为复制到物理对象中
+- JavaScript：不能创建一个类多个实例，只能创建多个对象，它们[[Prototype]]关联的是同一个对象，默认情况下不会复制，因为这些对象之间不会完全失去联系，是相互关联的
+
+new Foo()产生一个新对象(暂且称为a)，新对象内部链接[[Prototype]]关联到Foo.prototype对象
+
+最终得到了两个对象，它们之间相互关联，所以我们并没有初始化一个类，只是让两个对象相互关联
+
+new Foo()并没有直接关联，这个是间接完成的目标：一个关联到其他对象的新对象
+
+更直接的方法：Object.create(..)
+
+###### 关于名称
+
+[[Prototype]]机制通常被称为原型继承，但是这个组合属于严重影响了大家对于JavaScript的理解
+
+例如：
+
+- **继承：**继承意为赋值操作，但是JavaScript默认不会复制对象的属性，相反只会在对象之间创建关联，这样一个对象就可以通过委托访问另一个对象的属性和函数
+- **差异继承：**基本原则是在描述对象行为时，使用其不同于普遍描述的特质，比如在描述汽车时会描述是四个轮子的交通工具，而不会重复描述交通工具的通用特性（比如有引擎）
+
+默认情况下，对象不会像差异继承暗示的那样通过复制生产，当然也不适合用来描述JavaScript的[[Prototype]]机制
+
+##### "构造函数"
+
+代码如下：
+
+```javascript
+function Foo(){
+	// ...
+}
+
+Foo.prototype;	// { }
+```
+
+到底是什么让我们认为Foo是一个类呢？
+
+一个是看到了new关键字，另一个是Foo()的调用方式很像初始化类时类构造函数的调用方式
+
+除了令人迷惑的"构造函数"，Foo.prototype还有个绝招
+
+```javascript
+function Foo(){
+	// ...
+}
+
+Foo.prototype.contructor === Foo;	// true
+
+var a = new Foo();
+a.constructor === Foo;	// true
+```
+
+Foo.prototype默认有一个共有且不可枚举的属性.constructor，这个属性引用的是对象关联的函数，此外可以通过"构造函数"调用new Foo()创建的对象也有.constructor属性，指向“创建这个函数的对象”
 
