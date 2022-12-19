@@ -4103,3 +4103,123 @@ Another.count;			// 1 (count不是共享状态)
 ```
 
 这里用的是this的隐式绑定，Something.cool.call(this)这行代码使函数在Another的上下文都调用了Something.cool()，但仍无法避免相对引用
+
+
+
+### 原型
+
+之前多次提到[[prototyoe]]链，下面开始介绍
+
+##### [[Prototype]]
+
+JavaScript中的对象有一个特殊的[[prototype]]内置属性，也就是对于`其他对象的引用`，几乎所有的对象在创建[[prototype]]属性都会被赋予一个非空值
+
+注意：[[prototype]]链接可以为空，虽然很少见
+
+思考下面代码：
+
+```javascript
+var myObject = {
+	a: 2
+};
+
+myObject.a;		// 2
+```
+
+当我们试图引用对象的属性会触发[[Get]]操作，对于默认的[[Get]]操作来说，第一步检查对象本身是否有这个属性，有的话就使用它，如果a不在myObject中，就会使用`[[prototype]]链`
+
+```javascript
+var anotherObject = {
+	a: 2
+};
+
+// 创建一个关联到anotherObject的对象
+var myObject = Object.create(anotherObject);
+
+myObject.a;		// 2
+```
+
+如果anotherObject也找不到a并且[[prototype]]链不为空的话，就会继续找下去，这个过程会持续找到匹配的属性名和完整的[[prototype]]链，如果后者还找不到就返回undefined
+
+使用for...in遍历对象的原理和查找[[prototype]]链类似，任何通过原型链可以访问（并且是enumberable）到的属性都会被枚举，使用in操作符来检查属性在对象中是否存在同样会查找对象的整条原型链
+
+```javascript
+var anotherObject = {
+	a: 2
+};
+
+// 创建一个关联到anotherObject的对象
+var myObject = Object.create(anotherObject);
+
+for(var k in myObject){
+	console.log("found: " + k);
+}
+
+("a" in myObject);		// true
+```
+
+当你通过各种语法进行属性查找时都会查找[[prototype]]链，直到找到属性或者查找完整条原型链
+
+###### Object.prototype
+
+所有普通的[[prototype]]链最终都会指向内置的Object.prototype，可以理解为[[prototype]]链的`顶端`使Object.prototype对象，所以包含JavaScript许多通用功能
+
+比如：.toString(..)、.valueOf(..)、.hasOwnProperty(..)、.isPrototypeOf(..)
+
+###### 属性设置和屏蔽
+
+完整的讲述一下给一个对象设置属性：
+
+```javascript
+myObject.foo = "bar";
+```
+
+对应关系：
+
+| 对象是否包含属性 | 原型链上foo的状态      | 结果                                  |
+| :--------------- | ---------------------- | :------------------------------------ |
+| 已存在           | /                      | 修改对象的foo属性                     |
+| 不直接存在       | 遍历原型链，如果不存在 | 直接添加到myObject                    |
+| 已存在           | （已存在）             | 需要了解myObject会屏蔽原型链的所有foo |
+| 不存在           | 存在且writable: true   | 在myObject中添加屏蔽属性foo           |
+| 不存在           | 存在且writable: false  | 无法修改已有属性                      |
+| 不存在           | foo是个setter          | 一定会调用这个setter                  |
+
+注意：当writable为false，或在myObject创建屏蔽属性，严格模式下会报错，否则会被忽略
+
+大多数开发人员认为一定会发生屏蔽，但是综上可知还有两种情况的存在，如果想在另外两种情况下也屏蔽foo，那么就不能使用=来赋值，而是使用Object.defineProperty(..)向**myObject**添加foo
+
+**注意：**倒数第二种情况最意外，writable: false会**阻止**原型链下层隐式创建（屏蔽）同名属性，主要是为了`模拟类属性的继承`，可以把原型链上层的foo看作是父类的属性，会被myObject继承，这样一来myObject的foo属性也是只读，无法创建。**但请再注意：**事实上不会发生继承复制，但是myObject会因为其他对象中有一个只读foo就不能包含foo属性，而且只存在于 = 赋值中，使用Object.defineProperty(..)不会受到影响
+
+如果要对屏蔽方法**（也就是原型链上层的方法）**进行委托得使用`丑陋的显示伪多态`**（也就是重写）**，通常来讲，使用屏蔽**（也就是writable: false）**，得不偿失，尽量避免使用。之后会介绍不使用屏蔽的更加简洁的设计模式
+
+有些会产生**隐式**的屏蔽，思考下列代码：
+
+```javascript
+var anotherObject = {
+    a: 2
+};
+
+var myObject = Object.create(anotherObject);
+
+anotherObject.a;	// 2
+myObject.a;			// 2
+
+anotherObject.hasOwnProperty("a");	// true
+myObject.hasOwnProperty("a");		// false
+
+("a" in anotherObject);
+("a" in myObject);
+
+myObject.a++;		// 隐式屏蔽！
+
+anotherObject.a;	// 2
+myObject.a;			// 3
+
+myObject.hasOwnProperty("a");		// true
+```
+
+hasOwnProperty：只检查是否在对象中
+
+**解读：**myObject.a++相当于myObject.a = myObject.a + 1，`++操作先通过[[Prototype]]查找属性a并且从anotherObject.a获取当前属性值2，再给这个值+1，接着用[[Put]]将值3赋给myObject中新创建的屏蔽属性a`
+
