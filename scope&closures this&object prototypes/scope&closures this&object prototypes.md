@@ -4318,3 +4318,6 @@ a.constructor === Foo;	// true
 
 Foo.prototype默认有一个共有且不可枚举的属性.constructor，这个属性引用的是对象关联的函数，此外可以通过"构造函数"调用new Foo()创建的对象也有.constructor属性，指向“创建这个函数的对象”
 
+“类”名首字母要大写
+
+###### 构造函数还是调用
