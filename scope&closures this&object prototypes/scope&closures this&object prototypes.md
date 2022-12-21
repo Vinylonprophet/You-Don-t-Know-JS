@@ -4321,3 +4321,25 @@ Foo.prototype默认有一个共有且不可枚举的属性.constructor，这个�
 “类”名首字母要大写
 
 ###### 构造函数还是调用
+
+上面的代码很容易让人误解Foo是一个构造函数，因为我们用new来调用它并且看到它构造了一个对象
+
+**函数本省不是构造函数，**当我们在普通函数前**加上new关键字**之后，就会把函数调用变成一个**构造函数调用，**实际上，new会劫持所有普通函数并且构造对象的形式来调用它
+
+比如：
+
+```javascript
+function NothingSpecial(){
+	console.log("Don't mind me!");
+}
+
+var a = new NothingSpecial();	// Don't mind me!
+
+a;	// {}
+```
+
+NothingSpecial是普通函数，只是new调用时，无论如何都会构造一个对象并赋值给a，这个调用是一个构造函数调用，但NothingSpecial本身不是一个构造函数
+
+**“构造函数”是所有带new的函数调用**
+
+##### 技术
