@@ -4614,5 +4614,42 @@ myObject.c;		// 4
 
 ##### 关联关系是备用
 
-对象之间的关联关系是处理“缺失”属性或方法的一种备用选项
+对象之间的关联关系是处理“缺失”属性或方法的一种备用选项，但不是[[Prototype]]的本质
 
+思考下列代码：
+
+```javascript
+var anotherObject = {
+	cool: function(){
+		console.log("cool !")
+	}
+}
+
+var myObject = Object.create(anotherObject);
+
+myObject.cool();		// cool !
+```
+
+虽然myObject在无法处理属性或者方法时可以使用备用的anotherObject，那么软件会变得很难理解和维护
+
+如果真要这么做得思考一下这种设计模式是否合理
+
+下面的代码既可以发挥[[Prototype]]的威力，也可以方便维护：
+
+```javascript
+var anotherObject = {
+	cool: function(){
+		console.log("cool !")
+	}
+}
+
+var myObject = Object.create(anotherObject)
+
+myObject.doCool = function(){
+	this.cool();		// 内部委托
+}
+
+myObject.doCool();		// cool !
+```
+
+内部委托比起直接委托可以让API接口更清晰且便于理解
