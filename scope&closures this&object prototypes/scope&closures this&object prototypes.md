@@ -3172,7 +3172,7 @@ var newObj = JSON.parse( JSON.stringify( someObj ) );
 
 这种方法需要保证对象是JSON安全的，所以只用于**部分情况**
 
-相比深拷贝，浅拷贝容易多，ES6提供了 **Object.assign(..)** 方法来实现浅拷贝，第一个参数是目标对象，第二个以及之后还可以跟一个或多个源对象，它会遍历一个或多个源对象的所有可枚举(enumberable)的自有键(owned key)并把他们`复制（使用 = 操作符赋值）到目标对象`，最后返回目标对象，像这样：
+相比深拷贝，浅拷贝容易多，ES6提供了 **Object.assign(..)** 方法来实现浅拷贝，第一个参数是目标对象，第二个以及之后还可以跟一个或多个源对象，它会遍历一个或多个源对象的所有可枚举(enumerable)的自有键(owned key)并把他们`复制（使用 = 操作符赋值）到目标对象`，最后返回目标对象，像这样：
 
 ```javascript
 var newObj = Object.assign( {}, myObject );
@@ -3218,7 +3218,7 @@ Object.defineProperty( myObject, "a", {
 	value: 2,
 	writable: true,
 	configurable: true,
-	enumberable: true
+	enumerable: true
 } );
 
 myObject.a;		// 2
@@ -3239,7 +3239,7 @@ Object.defineProperty( myObject, "a", {
 	value: 2,
 	writable: false,
 	configurable: true,
-	enumberable: true
+	enumerable: true
 })
 
 myObject.a = 3;
@@ -3258,7 +3258,7 @@ Object.defineProperty( myObject, "a", {
 	value: 2,
 	writable: false,
 	configurable: true,
-	enumberable: true
+	enumerable: true
 })
 
 myObject.a = 3;		// TypeError
@@ -3284,7 +3284,7 @@ Object.defineProperty( myObject, "a", {
 	value: 4,
 	writable: true,
 	configurable: false,
-	enumberable: true
+	enumerable: true
 })
 
 myObject.a;			// 4
@@ -3295,7 +3295,7 @@ Object.defineProperty( myObject, "a", {
 	value: 6,
 	writable: true,
 	configurable: true,
-	enumberable: true
+	enumerable: true
 });					// TypeError
 ```
 
@@ -3317,7 +3317,7 @@ Object.defineProperty( myObject, "a", {
 	value: 2,
 	writable: true,
 	configurable: false,
-	enumberable: true
+	enumerable: true
 });
 
 myObject.a;		// 2
@@ -3327,9 +3327,9 @@ myObject.a;		// 2
 
 如你所见delete失败了，因为属性是不可配置的，本例中delete只是用来直接删除对象的属性，如果对象的某个属性是某个对象/函数的最后一个引用者，那么delete之后，这个未引用的对象/函数就可以被垃圾回收。但是不能把delete看成一个释放内存的工具，仅仅是删除对象属性的操作
 
-###### 3. Enumberable
+###### 3. enumerable
 
-如果把对象的enumberable设置成false，这个属性就不会出现在枚举中
+如果把对象的enumerable设置成false，这个属性就不会出现在枚举中
 
 ##### 不变性
 
@@ -3449,7 +3449,7 @@ myObject.b;		// undefined
 
 在ES5中可以使用getter和setter部分改写默认操作，但只能在单个属性而不是整个对象上。getter是一个隐藏函数，会在获取属性值时调用，setter也是隐藏函数，会在设置属性值时调用
 
-当给一个属性定义getter或setter或两者，这个叫做“访问描述符”，访问描述符会忽略value和writabe特性，取而代之关心set和get（还有configurable和enumberable）特性
+当给一个属性定义getter或setter或两者，这个叫做“访问描述符”，访问描述符会忽略value和writabe特性，取而代之关心set和get（还有configurable和enumerable）特性
 
 思考下列代码：
 
@@ -3467,7 +3467,7 @@ Object.defineProperty(
 		get: function(){
 			return this.a*2;
 			
-			enumberable: true
+			enumerable: true
 		}
 	}
 );
@@ -3600,7 +3600,7 @@ Object.definePropert(
 	myObject,
 	"a",
 	{
-		enumberable: true,
+		enumerable: true,
 		value: 2
 	}
 );
@@ -3609,19 +3609,19 @@ Object.definePropert(
 	myObject,
 	"b",
 	{
-		enumberable: false,
+		enumerable: false,
 		value: 3
 	}
 );
 
-myObject.propertyIsEnumberable("a");		// true
-myObject.propertyIsEnumberable("b");		// false
+myObject.propertyIsenumerable("a");		// true
+myObject.propertyIsenumerable("b");		// false
 
 myObject.keys(myObject);					// ["a"]
 myObject.getOwenPropertyNames(myObject);	// ["a", "b"]
 ```
 
-- propertyIsEnumberable：会检查对象是否`直接存在于对象中`（而不是原型链上）且满足enumberable: true
+- propertyIsenumerable：会检查对象是否`直接存在于对象中`（而不是原型链上）且满足enumerable: true
 - Object.keys(..)：会返回一个数组，包含所有可枚举属性
 - Object.getOwenPropertyNames(..)：会返回一个数组，包含所有属性，无论是否可以枚举
 
@@ -3697,7 +3697,7 @@ var myObject = {
 };
 
 Object.defineProperty( myObject, Symbol.iterator, {
-	enumberable: false,
+	enumerable: false,
 	writable: false,
 	configurable: true,
 	value: function() {
@@ -4141,7 +4141,7 @@ myObject.a;		// 2
 
 如果anotherObject也找不到a并且[[prototype]]链不为空的话，就会继续找下去，这个过程会持续找到匹配的属性名和完整的[[prototype]]链，如果后者还找不到就返回undefined
 
-使用for...in遍历对象的原理和查找[[prototype]]链类似，任何通过原型链可以访问（并且是enumberable）到的属性都会被枚举，使用in操作符来检查属性在对象中是否存在同样会查找对象的整条原型链
+使用for...in遍历对象的原理和查找[[prototype]]链类似，任何通过原型链可以访问（并且是enumerable）到的属性都会被枚举，使用in操作符来检查属性在对象中是否存在同样会查找对象的整条原型链
 
 ```javascript
 var anotherObject = {
@@ -4342,5 +4342,198 @@ NothingSpecial是普通函数，只是new调用时，无论如何都会构造一
 
 **“构造函数”是所有带new的函数调用**
 
-##### 明天这一章必定全部记录完毕，12.24
+##### 技术
+
+模仿类的行为
+
+```javascript
+function Foo(name){
+	this.name = name;
+}
+
+Foo.prototype.myName = function(){
+	return this.name;
+}
+
+var a = new Foo("a");
+var b = new Foo("b");
+
+a.myName();
+b.myName();
+```
+
+两种面向类的技巧：
+
+1. this.name = name 有点像类实例封装
+2. 给Foo.prototype添加函数
+
+**原理：a和b的内部的[[Prototype]]会关联到Foo.prototype上，a和b找不到myName时，就在Foo.prototype上找到**
+
+###### 回顾构造函数
+
+之前提到的a.constructor === Foo实际上是a.prototype.constructor === Foo
+
+举例来说，Foo.constructor是Foo函数在声明时的默认属性，如果创建了一个新对象并替换了函数默认的.prototype，那么新对象不会自动获得.constructor
+
+思考:
+
+```javascript
+function Foo(){
+	/* ... */
+}
+
+Foo.prototype = {
+    /* ... */
+}
+
+var a1 = new Foo();
+a1.constructor === Foo;		// false
+a1.constructor === Object;	// true
+```
+
+所以注意constructor并不是一定是指谁构造了谁，因为有可能是prototype会被替换
+
+也可以选择`手动添加一个符合正常行为不可枚举的`constructor
+
+```javascript
+function Foo(){
+	/* ... */
+}
+
+Foo.prototype = {
+	/* ... */
+}
+
+Object.defineProperty (Foo.prototype, "constructor", {
+	enumerable: false,
+	writable: true,
+	configurable: true,
+	value: Foo		// 让.constructor指向Foo
+});
+```
+
+修复constructor代价太高，所以不能误解constructor，他并不表示（对象）被（它）构造
+
+.constructor是不可枚举的，但是可以被改写
+
+### （原型）继承
+
+原型风格：
+
+```javascript
+function Foo(name){
+	this.name = name
+}
+
+Foo.prototype.myName = function(){
+	return this.name
+}
+
+function Bar(name, label){
+	Foo.call(this, name);
+	this.label = label;
+}
+
+Bar.prototype = Object.create(Foo.prototype)
+
+Bar.prototype.myLabel = function(){
+	return this.label
+}
+
+var a = new Bar("a", "obj a");
+
+a.myName();
+a.myLabel();
+```
+
+这段代码的核心部分就是`Bar.prototype = Object.create(Foo.prototype)`，意思就是：`创建了一个新的Bar.prototype对象并把它关联到到Foo.prototype`
+
+我们创建了一个新对象并把它关联到我们希望的对象上，直接把**原始的关联对象抛弃掉**
+
+以下两种方式都是错误的：
+
+```javascript
+// 想要的机制不一样
+Bar.prototype = Foo.prototype;
+
+// 能满足需求，但是会产生副作用
+Bar.prototype = new Foo();
+```
+
+Bar.prototype = Foo.prototype是直接引用Foo.prototype，所以没必要
+
+Bar.prototype = new Foo()能做到关联一个新对象，但是他用到了构造函数的调用，比如Foo()有一些副作用就会影响到Bar()
+
+因此要做到关联对象，必须使用Object.create(..)而不是使用有副作用的new Foo()，唯一的缺点是`需要创建一个新对象然后把旧对象抛弃掉，不能直接修改已有默认值`
+
+如果有一个标准且可靠的方法来修改[[Prototype]]关联就好了。在ES6之前，只能通过设置 .__ proto __ 属性来实现，但这个方法并不是标准且无法兼容所有浏览器。ES6添加了辅助函数`Object.setPrototypeOf(..)`，可以用标准且可靠的方法来修改关联
+
+```javascript
+// ES6之前
+Bar.prototype = Object.create(Foo.prototype);
+
+// ES6之后
+Object.setPrototypeOf(Bar.prototype, Foo.prototype);
+```
+
+如果忽略掉轻微性能损失（抛弃的对象需要垃圾回收），实际上比ES6及其之后的方法更短且可读性更高
+
+##### 检查 类 关系
+
+检查一个实例（JavaScript中的对象）的继承祖先通常被称为内省（或反射）
+
+```javascript
+function Foo(){
+	// ...
+}
+
+Foo.prototype.blah = ...;
+
+var a = new Foo();
+```
+
+**第一种判断方法：a instanceof Foo	// true**
+
+instanceof左边是普通对象，右边是一个函数
+
+`可以看成对象是否由构造函数生成`
+
+如果判断两个对象之间是否通过[[Prototype]]关联就无法成功
+
+**第二种判断方法：Foo.prototype.isPrototypeOf(a)	// true**
+
+`在a的整条[[Prototype]]链中是否出现过Foo.prototype`
+
+这种方法不需要间接引用函数Foo，它的.prototype就会被自动访问
+
+比如：b.isPrototypeOf(c)意思就是b是否出现在c的原型链中
+
+**直接获取一个对象的原型链：Object.getPrototypeOf(a)**
+
+可以通过Object.getPrototypeOf(a) === Foo.prototype判断，但大多数浏览器也支持a.__ proto __ === Foo.prototype来访问内部属性（__ proto __）在ES6前不是标准的，也是像constructor一样内置在Object.prototype中
+
+.__ proto __ 像一个属性，但是更像一个getter/setter，实现大致是：
+
+```javascript
+Object.defineProperty( Object.prototype, "__proto__", {
+	get: function(){
+		return Object.getPrototypeOf(this);
+	},
+	set: function(){
+		Object.setPrototypeOf(this, o);
+		return o;
+	}
+})
+```
+
+所以下列的代码是无效的：
+
+```javascript
+obj.__proto__ = "modify";
+obj.__proto__		// 还是原型链
+```
+
+所以在访问a.__ proto __ 的过程中，实际上是调用了 a.__ proto__()（调用getter函数）
+
+. __ proto __是可设置属性，可以使用Object.setPrototypeOf()设置，但一般而言不需要修改已有[[Prototype]]
 
