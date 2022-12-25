@@ -4537,3 +4537,82 @@ obj.__proto__		// 还是原型链
 
 . __ proto __是可设置属性，可以使用Object.setPrototypeOf()设置，但一般而言不需要修改已有[[Prototype]]
 
+#### 对象关联
+
+我们现在就可以理解，一系列的对象链接被称为原型链
+
+##### 创建关联
+
+Object.create(..)的原理：
+
+```javascript
+var foo = {
+	something: function(){
+		console.log("Tell me something good ... ...")
+	}
+}
+
+var bar = Object.create(foo)
+
+bar.something();		// Tell me something good ... ...
+```
+
+Object.create(..)会创建一个新对象bar并且把它关联到指定对象foo，这样就可以充分发挥原型链机制且避免不必要的麻烦`（使用new构造函数会生成.prototype和.constructor引用）`
+
+我们不需要类来创建两个对象之间的关系，只需要通过委托来关联对象就足够了
+
+###### Object.create()的polyfill代码
+
+Object.create()是在ES5中新增的函数，所以之前如果要支持这个功能就需要使用一些简单的polyfill代码：
+
+```javascript
+if(!Object.create){
+	Object.create = function(o){
+		function F(){}
+		F.prototype = o;
+		return new F()
+	}
+}
+```
+
+这段代码使用了一个一次性函数F，我们通过改写它的 .prototype 属性使其指向想要关联的对象，然后再使用new F() 来构造一个新对象进行关联
+
+ES5中内置的Object.create(..)函数还提供了一系列附加功能，简单介绍一下：
+
+```javascript
+var anotherObject = {
+	a: 2
+}
+
+var myObject = Object.create( anotherObject, {
+	b: {
+		enumerable: false,
+		writable: true,
+		configurable: false,
+		value: 3
+	},
+	c: {
+		enumerable: true,
+		writable: false,
+		configurable: false,
+		value: 4
+	}
+})
+
+myObject.hasOwnProperty( "a" );		// false
+myObject.hasOwnProperty( "b" );		// true
+myObject.hasOwnProperty( "c" );		// true
+
+myObject.a;		// 2
+myObject.b;		// 3
+myObject.c;		// 4
+```
+
+第二个参数制定了需要添加到新对象中的属性名以及这些属性的属性描述符
+
+通常来说并不会使用Object.create(..)的附加功能
+
+##### 关联关系是备用
+
+对象之间的关联关系是处理“缺失”属性或方法的一种备用选项
+
