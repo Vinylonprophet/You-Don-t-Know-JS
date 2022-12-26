@@ -4660,3 +4660,95 @@ myObject.doCool();		// cool !
 
 现在使用更加简单直接的方式来描述[[Prototype]]机制的本质：`对象之间的关联关系`
 
+#### 面向委托的设计
+
+想要直观的使用[[Prototype]]，就必须意识到它代表的是一种不同于类的设计模式
+
+##### 类理论
+
+类设计模式在继承时使用方法重写（和多态），观察下列伪代码：
+
+```javascript
+class Task{
+    id;
+    
+    // 构造函数Task()
+    Task(ID){
+        id = ;
+    }
+    
+    outputTask(){
+        output(id);
+    }
+}
+
+class XYZ extends Task{
+    label;
+    
+    // 构造函数XYZ()
+    XYZ(ID, Label){
+        super(ID);
+        label = Label;
+    }
+    
+    outputTask(){
+        super();
+        output(label);
+    }
+}
+
+class ABC inherits Task{
+    // ...
+}
+```
+
+##### 委托理论
+
+尝试委托行为而不是类来思考问题，可以想象成执行任务需要两个兄弟对象协作完成，可以允许XYZ委托Task完成一些任务，观察下列伪代码：
+
+```javascript
+Task = {
+    setID: function(ID){
+        this.id = ID;
+    }
+    
+    outputID: function(){
+        console.log(this.id);
+    }
+}
+
+// 让XYZ委托Task
+XYZ = Object.create(Task);
+
+XYZ.prepareTask = function(ID, Label){
+    this.setID(ID);
+    this.label = Label;
+}
+
+XYZ.outputTaskDetails = function(){
+    this.outputID();
+    console.log(this.label);
+}
+
+// ABC = Object.create(Task);
+// ABC ... = ...
+```
+
+这段代码中Task和XYZ不是类（function）而是对象，通过Object.create进行委托
+
+这种可以称为"对象关联"
+
+上面的代码不同之处：
+
+1. id和label都是直接存在XYZ（而不是Task），通常来说最好把状态存在委托者上而不是委托目标
+2. 要尽量避免原型链的不同级别中使用相同的命名，便于理解和维护
+3. 调用位置触发this的隐式绑定规则
+
+委托行为意味着某些对象在找不到属性或方法引用时会把这个请求给另一个对象
+
+这是非常强大的设计模式，并不是子类父类垂直组织的关系，而是通过任意方向的委托关联并且并排组织的
+
+###### 互相委托（禁止）
+
+
+
