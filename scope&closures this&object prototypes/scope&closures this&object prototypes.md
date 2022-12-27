@@ -4896,3 +4896,128 @@ b2.speak();
 
 #### 类与对象
 
+下面开始介绍“类”和“行为委托”在真实场景中的应用方法
+
+Web开发中非常典型的一种前端场景：创建UI控件（按钮、下拉列表、等等）
+
+##### 控件”类“
+
+一个包含所有通用控件行为的父类（比如Widget）和继承父类的特殊控件子类（比如Button）
+
+下面的代码时使用纯JavaScript实现类风格的代码：
+
+```javascript
+// 父类
+function Widget(width, height){
+    this.width = width || 50;
+    this.height = height || 50;
+    this.$elem = null;
+}
+
+Widget.prototype.render = function($where){
+    if(this.$elem){
+        this.$elem.css({
+            width: this.width + "px",
+            height: this.height + "px"
+        }).appendTo($where)
+    }
+}
+
+// 子类
+function Button(width, height, label){
+    // 调用 "super" 构造函数
+    Widget.call(this, width, height);
+    this.label = label || "Default";
+    
+    this.$elem = $(" <button> ").text(this.label);
+}
+
+// 让 Button "继承" Widget
+Button.prototype = Object.create(Widget.prototype);
+
+// 重写 render(..)
+Button.prototype.render = function($where){
+    // "super" 调用
+    Widget.prototype.render.call(this, $where);
+    this.$elem.click(this.onClick.bind(this));
+};
+
+Button.prototype.onClick = function(evt){
+    console.log("Button " + this.label + " clicked !");
+}
+
+$(document).ready( function(){
+    var $body = $(document.body);
+    var btn1 = new Button( 125, 30, "Hello" );
+    var btn2 = new Button( 150, 40, "Hello" );
+    
+    btn1.render($body);
+    btn2.render($body);
+})
+```
+
+在面向对象设计模式种，现在父类中定义基础的render(..)，然后重写它，并添加一些特有的行为，但是可以看到有许多丑陋的`显式伪多态`
+
+###### ES6的class语法糖
+
+使用class实现相同功能：
+
+```javascript
+class Widget{
+	constructor(width, height){
+		this.width = width || 50;
+        this.height = height || 50;
+        this.$elem = null;
+	}
+	render($where){
+        if(this.$elem){
+            this.$elem.css({
+                width: this.width + "px",
+                height: this.height + "px"
+            }).appendTo($where)
+        }
+    }
+}
+
+class Button extends Widget{
+    constructor(width, height, label){
+		super(width, height);
+        this.label = label || "Default";
+        this.$elem = $(" <button> ").text(this.label);
+	}
+    render($where){
+        super.render($where);
+        this.$elem.click(this.onClick.bind(this));
+    };
+    onClick(evt){
+        console.log("Button " + this.label + " clicked !");
+    }
+}
+
+$(document).ready( function(){
+    var $body = $(document.body);
+    var btn1 = new Button( 125, 30, "Hello" );
+    var btn2 = new Button( 150, 40, "Hello" );
+    
+    btn1.render($body);
+    btn2.render($body);
+})
+```
+
+使用ES6之后，许多丑陋的语法不见了，super(..)棒极了！
+
+`尽管语法上得到了改进，但是仍然没有真正的类，仍是通过[[Prototype]]机制实现的`
+
+##### 委托控件对象
+
+下列代码使用对象关联风格委托来实现Widget/Button：
+
+```javascript
+var Widget = {
+    init: function(width, height){
+        this.width || 50;
+        
+    }
+}
+```
+
