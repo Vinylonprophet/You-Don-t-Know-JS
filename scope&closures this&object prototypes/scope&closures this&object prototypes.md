@@ -4750,5 +4750,78 @@ XYZ.outputTaskDetails = function(){
 
 ###### 互相委托（禁止）
 
+无法在两个或两个以上互相委托的对象之间创建`循环`委托
 
+互相委托理论上是可以正常工作的，某些情况下非常有用（这里不是很能理解这句话的意思）
+
+之所以要禁止互相委托，是因为引擎的开发者们发现在设置时检验（并禁止！）一次无限循环引用要更加高效，否则每次从对象中查找属性都需要进行检查
+
+###### 调试
+
+浏览器和工具的解析结果不一定相同
+
+Chrome：
+
+```javascript
+function Foo(){}
+
+var a1 = new Foo()
+
+a1;		// Foo {}
+```
+
+FireFox：Object {}
+
+Chrome实际要说的是“{}是一个空对象，由Foo构造”
+
+FireFox实际要说的是"{}是一个空对象，由Object构造"
+
+有这种细微的区别：Chrome会`动态追踪`并实际`执行构造函数的函数名`当作一个`内置属性`
+
+用JavaScript的机制解释Chrome的原理：
+
+```javascript
+function Foo(){}
+
+var a1 = new Foo();
+
+a1.constructor;			// Foo(){}
+a1.constructor.name;	// "Foo"
+```
+
+思考下列代码：
+
+```javascript
+function Foo(){}
+
+var a1 = new Foo();
+
+Foo.prototype.constructor = function Gotcha(){};
+
+a1.constructor;			// Gotcha(){}
+a1.constructor.name;	// "Gotcha"
+
+a1;		// Foo {}
+```
+
+即使修改了也显式Foo
+
+思考下列代码：
+
+```javascript
+var Foo = {};
+
+var a1 = Object.create(Foo);
+
+a1;		// Object {}
+
+Object.defineProperty(a1, "constructor", {
+	enumerable: false,
+	value: function Gotcha(){}
+});
+
+a1;		// Gotcha {}
+```
+
+以上代码说明Chrome控制台确实使用 .contructor.name ，但这个行为被认定是Chrome的一个bug，不确定什么时候被修复
 
