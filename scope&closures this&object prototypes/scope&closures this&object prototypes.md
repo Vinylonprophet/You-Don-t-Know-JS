@@ -4825,3 +4825,74 @@ a1;		// Gotcha {}
 
 以上代码说明Chrome控制台确实使用 .contructor.name ，但这个行为被认定是Chrome的一个bug，不确定什么时候被修复
 
+##### 比较思维模型
+
+比较一下"类"和"委托"两种设计模式的理论区别
+
+下面是典型的（“原型”）面向对象风格：
+
+```javascript
+function Foo(who){
+    this.me = who;
+}
+
+Foo.prototype.identify = function(){
+    return "I'm " + this.me;
+}
+
+function Bar(who){
+    Foo.call(this, who);
+}
+
+Bar.prototype = Object.create(Foo.prototype);
+
+Bar.prototype.speak = function(){
+    alert("Hello, " + this.identify() + ".");
+}
+
+var b1 = new Bar("b1");
+var b2 = new Bar("b2");
+
+b1.speak();
+b2.speak();
+```
+
+子类Bar继承了父类Foo，然后生成了b1和b2两个实例，b1委托了Bar.protoype，Bar.prototype委托了Foo.prototype
+
+对象关联风格：
+
+```javascript
+Foo = {
+	init: function(who){
+		this.me = who;
+	},
+	identify: function(){
+		return "I'm " + this.me;
+	}
+}
+
+Bar = Object.create(Foo);
+
+Bar.speak = function(){
+    alert("Hello, " + this.identify() + ".");
+}
+
+var b1 = Object.create(Bar);
+b1.init("b1");
+var b2 = Object.create(Bar);
+b2.init("b2");
+
+b1.speak();
+b2.speak();
+```
+
+把b1委托给Bar并把Bar委托给Foo，实现了三个对象之间的关联
+
+`相比于之前的代码而言，对象关联不需要那些既复杂又令人迷惑的模仿类的行为（构造函数、原型及new）`
+
+观察两段代码的思维模型（图在书上：P171-173）
+
+类风格代码的思维模型强调实体以及实体之间的关系；对象关联风格代码只关注：`对象之间的关联关系`
+
+#### 类与对象
+
