@@ -5182,3 +5182,5 @@ var auth = new AuthController(
 auth.checkAuth();
 ```
 
+所有控制器共享的基础行为是success(..)、failure(..)和showDialog(..)
+
