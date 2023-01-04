@@ -5176,6 +5176,7 @@ AuthController.prototype.failure = function(){
 }
 
 var auth = new AuthController(
+    // 除了继承，我们还需要合成
 	new LoginController()
 );
 
@@ -5184,3 +5185,111 @@ auth.checkAuth();
 
 所有控制器共享的基础行为是success(..)、failure(..)和showDialog(..)
 
+子类LoginController和AuthController通过重写failure(..)和success(..)来扩展默认基础类行为，此外，AuthController需要一个LoginController的实例来和登陆表单进行交互，因此这个实例变成了一个数据属性
+
+另一个要注意的是我们在继承的基础上进行了一些**合成**
+
+AuthController需要使用LoginController，因此我们实例化后者（new LoginController(..)）并用一个类成员属性this.login来引用它，这样AuthController就可以调用LoginController的行为
+
+可能会想让AuthController和LoginController两者有继承关系，这样就可以通过继承链实现真正的合成，但两者都不具备对方的基础行为，所以这种继承不恰当
+
+解决方法是：`进行一些简单的合成从而让他们既不互相继承又可以互相合作`
+
+##### 反类
+
+使用`对象关联风格的行为委托`实现`更简单`的设计：
+
+```javascript
+var LoginController = {
+	errors: [],
+    getUser: function(){
+        return document.getElementById(
+        	"login_username"
+        ).value;
+    },
+    getPassword: function(){
+        return document.getElementById(
+        	"login_password"
+        ).value;
+    },
+    validateEntry: function(user, pw){
+        user = user || this.getUser();
+        pw = pw || this.getPassword();
+        
+        if(!(user && pw)){
+            return this.failure(
+            	"Please enter a username && password!"
+            );
+        } else if (pw.length < 5){
+            return this.failure(
+            	"Password must be 5+ characters!"
+            );
+        }
+        
+        // 验证通过
+        return true;
+    },
+    showDialog: function(title, msg){
+        // 给用户显式标题和消息
+    },
+    failure: function(err){
+        this.errors.push(err);
+        this.showDialog("Error", "Login invalid: " + err);
+    }
+};
+
+// 让AuthController委托LoginController
+var AuthController = Object.create( LoginController );
+
+AuthController.errors = [];
+AuthController.checkAuth = function(){
+	var user = this.getUser();
+    var pw = this.getPassword();
+    
+    if(this.validateEntry( user, pw)){
+        this.server("/check-auth", {
+            user: user,
+            pw: pw
+        })
+        .then(this.accepted.bind(this))
+        .catch(this.rejected.bind(this));
+    }
+};
+AuthController.server = function(url, data){
+    return $.ajax({
+        url: url,
+        data: data
+    });
+};
+AuthConroller.accepted = function(){
+    this.showDialog("Success", "Authenticated!")
+};
+AuthConroller.rejected = function(){
+    this.failure("Auth Failed: " + err);
+};
+```
+
+由于AuthController只是一个对象（LoginController也一样），因此我们不需要实例化，只需要一行代码：
+
+```javascript
+AuthController.checkAuth();
+```
+
+借助对象关联，可以简单的向委托链上添加一个或多个对象，同样不需要实例化：
+
+```javascript
+var controller1 = Object.create(AuthConroller);
+var controller2 = Object.create(AuthConroller);
+```
+
+在行为委托模式中，AuthConroller和LoginController只是对象，不是父子关系，是**兄弟关系**
+
+这种模式重点在于只需要两个实体，而之前的模式需要三个实体
+
+我们不需要基类来共享两个实体的行为，不需要实例化类，不需要合成，我们只需要**委托**和**对象**
+
+我们也避免了使用多态，相反是通过使用accepted(..)和rejected(..)——可以更好的描述它们的行为
+
+**总结：**我们使用了一种极其简单的设计实现了相同的功能，这是`对象关联`风格代码和`行为委托`设计模式的力量
+
+#### 更好的语法
