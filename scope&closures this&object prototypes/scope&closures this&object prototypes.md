@@ -5293,3 +5293,111 @@ var controller2 = Object.create(AuthConroller);
 **总结：**我们使用了一种极其简单的设计实现了相同的功能，这是`对象关联`风格代码和`行为委托`设计模式的力量
 
 #### 更好的语法
+
+ES6的class语法可以`简洁的定义类方法`，这个特性让class看起来更有吸引力（但是有时候要避免使用这个特性）
+
+```javascript
+class Foo {
+	methodName(){ /*..*/ }
+}
+```
+
+可以抛弃定义中的关键字function
+
+虽然function，看起来违背了对象关联的简洁性，实际上大可不必如此
+
+之前在任意对象的字面形式使用简洁方法声明，所以对象关联风格的对象可以这样声明：
+
+```javascript
+var LoginController = {
+	errors: [],
+    getUser(){
+    	// ...   
+    },
+    getPassword(){
+        // ...
+    }
+    // ...
+};
+```
+
+唯一区别是字面量形式需要使用“ , ”来分隔元素，而class语法不需要，这个区别对于整体设计而言无关紧要
+
+且在ES6中，可以使用对象的字面量形式来改写之前繁琐的属性赋值语法（比如AuthController的定义），然后使用Object.setPrototypeof(..)来修改它的[[Prototype]]：
+
+```javascript
+// 使用更好的对象字面形式语法和简洁方法
+var AuthController = {
+	errors: [],
+	checkAuth(){
+		// ...
+	},
+	server(){
+		// ...
+	}
+	// ...
+};
+
+// 现在把AuthController关联到LoginController
+Object.setPrototypeOf( AuthController, LoginController );
+```
+
+**注意：**以前的对象关联风格，需要先Object.create( . . )，然后再类似于AuthController.checkAuth = function(){}这样一个个建造方法和属性，但现在完全不用
+
+使用ES6简洁方法可以让对象关联风格更加人性化（并且比典型的原型风格代码**更加简洁和优秀**），不需要使用类就能享受**整洁的对象语法**
+
+##### 反词法
+
+简介语法有一个非常小但是非常重要的缺点：
+
+```javascript
+var Foo = {
+	bar() { /*..*/ },
+	baz: function baz(){ /*..*/ }
+};
+```
+
+去掉语法糖之后：
+
+```javascript
+var Foo = {
+	bar: function(){ /*..*/ },
+	baz: function baz(){ /*..*/ }
+}
+```
+
+区别就是，函数对象本身没有名称标识符，所以bar()的缩写会变成一个匿名函数表达式并且赋值给bar属性。相比之下，具名函数表达式（ function baz().. ）会额外给 .baz 属性附加一个词法名称标识符baz
+
+匿名函数没有name标识符，会导致：
+
+1. 调试栈更难追踪
+2. 自我引用（递归、事件（解除）绑定、等等）更难
+3. 代码（稍微）更难理解
+
+简洁方法没有1，3的缺点
+
+去掉语法糖的版本使用的是匿名函数表达式，通常不会在追踪栈中添加name，但是简洁方法很特殊，会给对应的函数对象设置一个内部的name属性，理论上可以用在追踪栈中
+
+但是很不幸，简洁方法无法避免第二点，它们不具备可以自我引用的词法标识符：
+
+```javascript
+var Foo = {
+	bar: function(x){
+		if(x<10){
+			return Foo.bar( x*2 )
+		}
+		return x;
+	},
+	baz: function baz(x){
+		if(x<10){
+			return Foo.bar( x*2 )
+		}
+		return x;
+	}
+};
+```
+
+在本例中使用Foo.bar( x*2 )就够了，但是许多情况下无法使用这种方法，比如多个对象通过代理共享函数，使用this绑定，等等。这种情况下最好的方法就是使用函数对象的name标识符来进行真正的自我引用
+
+使用简洁方法时一定要小心，如果`需要自我引用`，最好使用传统的具名函数表达式来定义对应的函数（ baz: function baz(){..} ），不要使用简洁方法
+
