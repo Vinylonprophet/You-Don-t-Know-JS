@@ -5401,3 +5401,57 @@ var Foo = {
 
 使用简洁方法时一定要小心，如果`需要自我引用`，最好使用传统的具名函数表达式来定义对应的函数（ baz: function baz(){..} ），不要使用简洁方法
 
+##### 内省
+
+内省就是检查实例的类型，类的内省的主要目的是通过创建方式来判断对象的结构和功能
+
+下面是使用instance of来推测对象a1的功能：
+
+```javascript
+function Foo() {
+	// ...
+}
+
+Foo.prototype.something = function(){
+	// ...
+}
+
+var a1 = new Foo();
+
+// 之后
+
+if(a1 instanceof Foo) {
+	a1.something();
+}
+```
+
+因为Foo.prototype在a1的[[Prototype]]链上，所以instanceof操作会告诉我们a1是Foo“类”的一个实例，所以我们会认为a1有Foo”类“描述的功能
+
+因为Foo.prototype在a1的[[Prototype]]链上，所以instanceof操作会告诉我们a1是Foo“类”的一个实例。知道这点之后可以认为a1有Foo“类”描述的功能
+
+Foo类并不存在，只是一个普通的函数Foo，它引用了a1委托的对象（Foo.prototype）
+
+从语法的角度来说，instanceof是检查a1和Foo的关系，实际上是想说的是a1和Foo.prototype是互相关联的
+
+`instanceof`语法会产生语义困惑而且非常不直观，如果想检查对象a1和某个对象的关系，那么必须使用另一个引用该对象的函数——不能直接判断两个对象是否关联
+
+之前介绍的抽象的Foo/bar/b1的例子，简单来说：
+
+```javascript
+function Foo() { /*..*/ }
+Foo.prototype...
+
+function Bar() { /*..*/ }
+Bar.prototype = Object.create( Foo.prototype );
+
+var b1 = new Bar( "b1" );
+```
+
+如果要使用 instanceof 和 . prototype 语义来检查本例中实体的关系，必须：
+
+```
+// 让Foo和Bar互相关联
+Bar.prototype instanceof Foo;	// true
+
+```
+
