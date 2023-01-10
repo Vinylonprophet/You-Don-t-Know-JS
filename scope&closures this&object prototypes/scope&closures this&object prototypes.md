@@ -5449,9 +5449,21 @@ var b1 = new Bar( "b1" );
 
 如果要使用 instanceof 和 . prototype 语义来检查本例中实体的关系，必须：
 
-```
+```javascript
 // 让Foo和Bar互相关联
 Bar.prototype instanceof Foo;	// true
+Object.getPrototypeOf( Bar.prototype )
+	=== Foo.prototype;			// true
+Foo.prototype.isPrototypeOf( Bar.prototype );	// true
 
+// 让b1关联到Foo和Bar
+b1 instanceof Foo;	// true
+b1 instanceof Bar;	// true
+Object.getPrototypeOf(b1) === Bar.prototype;	// true
+Foo.prototype.isPrototypeOf(b1);	// true
+Foo.prototype.isPrototypeOf(b1);	// true
 ```
 
+这是一种非常糟糕的方法，举例来说，最直观的想法可能是使用Bar instanceof Foo（因为很容易把“实例”理解成“继承”），但在JavaScript中必须使用Bar.prototype instanceof Foo
+
+还有一种`常见但是可能更加脆弱的内省模式`，但是许多开发者认为它比instanceof更好。
