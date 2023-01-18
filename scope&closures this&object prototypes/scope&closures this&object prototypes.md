@@ -5466,4 +5466,281 @@ Foo.prototype.isPrototypeOf(b1);	// true
 
 这是一种非常糟糕的方法，举例来说，最直观的想法可能是使用Bar instanceof Foo（因为很容易把“实例”理解成“继承”），但在JavaScript中必须使用Bar.prototype instanceof Foo
 
-还有一种`常见但是可能更加脆弱的内省模式`，但是许多开发者认为它比instanceof更好。
+还有一种`常见但是可能更加脆弱的内省模式`，但是许多开发者认为它比instanceof更好。这个术语源于格言“如果看起来像鸭子，叫起来像鸭子就一定是鸭子”
+
+例子：
+
+```javascript
+if(a1.something) {
+	a1.something();
+}
+```
+
+我们没有检查a1和委托something()函数以及对象之间的关系，而是假设a1通过了测试a1.something的话，那么a1就一定能调用.something()
+
+"鸭子类型"通常会在测试之外做出许多关于`对象功能的假设`，这会带来许多`风险`（脆弱的设计）
+
+**ES6的Promise就是典型的鸭子类型**
+
+我们需要`判断一个对象引用是否是Promise`，但判断的方法是检查对象`是否有then()方法`。换句话说，如果对象`有then()方法`，ES6的Promise就认为这个对象是`可持续的`，因此会期望它具有Promise的所有标准行为
+
+**如果一个不是Promise但是有then()方法的对象，千万不要用在ES6的Promise机制中，会出错**
+
+这个例子清楚的解释了鸭子类型的危害，应该尽量避免使用这个方法，即使条件是可控的
+
+对象关联风格代码：内省更**简洁**
+
+先回顾一下之前的关联例子：
+
+```javascript
+var Foo = { /*..*/ };
+
+var Bar = Object.create( Foo );
+Bar...
+
+var b1 = Object.create( Bar );
+```
+
+使用对象关联时，所有的对象都是通过[[Prototype]]委托相互关联，下面是内省的方法：
+
+```javascript
+// 让 Foo 和 Bar 互相关联
+Foo.isPrototypeOf( Bar );	// true
+Object.getPrototypeOf( Bar ); === Foo;	// true
+
+// 让 b1 关联到 Foo 和 Bar
+Foo.isPrototypeOf( b1 );	// true
+Bar.isPrototypeOf( b1 );	// true
+Object.getPrototypeOf( b1 ) === Bar;	// true
+```
+
+没有使用instanceof是因为它会产生一些和类有关的误解，现在想问的问题是"你是我的原型吗？"，我们不需要间接形式，比如Foo.prototype或繁琐的Foo.prototype.isPrototypeOf(..)
+
+和之前的方法比起来，这种方法更`简洁`且`清晰`
+
+
+
+### 附录A —— ES6中的Class
+
+总结本书第二部分：类是一种可选的设计模式
+
+第四章和第五章介绍了的许多愈发的缺点：
+
+- 繁琐杂乱的 .prototype 引用
+- 试图调用原型链上层同名函数时的显示伪多态
+- 容易被误解成构造函数的 .constructor
+- 传统面向对象中的父类、子类和实例是复制操作，但在[[Prototype]]中没有复制，相反只有委托关联
+
+对比对象关联代码和行为委托，从简洁性看出，类不适合JavaScript
+
+#### A.1 class
+
+例子：
+
+```javascript
+class Widget {
+	constructor( width, height ){
+		this.width = width || 50;
+		this.height = height || 50;
+		this.$elem = null;
+	}
+	render( $where ){
+		if( this.$elem ){
+			this.$elem.css( {
+				width: this.width + "px",
+				height: this.height + "px"
+			}).appendTo( $where );
+		}
+	}
+}
+
+class Button extends Widget{
+	constructor( width, height, label ){
+		super(width, height);
+		this.label = label || "Default";
+		this.$elem = $( "<button>" ).text( this.label );
+	}
+	render( $where ){
+		super.render( $where );
+		this.$elem.click( this.onClick.bind( this ) );
+	}
+	onClick( evt ){
+		console.log( "Button '" + this.label + "' clicked!" );
+	}
+}
+```
+
+ES6解决的问题：
+
+1. 不再引用`杂乱`的 .prototype
+2. Button声明时会`直接“继承”`Widget，不再需要通过Object.create(..)来替换 .prototype 对象，也不需要设置 ._ _ proto _ _ 或者 Object.setPrototypeOf(..)
+3. 可以通过 super(..) 来`实现相对多态`，这样任何方法都可以引用原型链上层的同名方法。`super()`可以完美`解决构造函数`的问题
+4. class字面语法`不能声明属性`（只能声明方法）。看上去是一种限制，但这会排除很多不好的情况，如果没有这种限制的话，原型链末端的“实例”可能会意外获取其他地方的属性。所以，class语法实际上可以帮助避免错误
+5. 可以通过extends很自然的`扩展对象类型`，甚至是`内置的对象（子）类型`，比如Array或RegExp
+
+平心而论，class语法解决了许多典型原型风格代码中许多常见的（语法）问题和缺点
+
+#### A.2 class陷阱
+
+ES6的class语法`不是一种新的机制`，只是JavaScript的[[Prototype]]（委托）机制的一种语法糖
+
+class不会像传统面向类一样在声明时`静态复制所有行为`，如果再修改或`替换父”类“中的方法`，那子"类"和所有实例都会`受到影响`，因为`定义时没有复制`，只是基于[[Prototype]]的实时委托
+
+```javascript
+class C {
+	constructor(){
+		this.num = Math.random();
+	}
+	rand(){
+		console.log("Random: " + this.num);
+	}
+}
+
+var c1 = new C();
+c1.rand();		// "Random: 0.4324299..."
+
+C.prototype.rand = function(){
+	console.log("Random: " + Math.round(this.num * 1000));
+}
+
+var c2 = new C();
+c2.rand();		// "Random: 867"
+
+c1.rand();		// "Random: 432"
+```
+
+问自己：为什么要使用本质上不是类的class语法呢？
+
+class不是让传统类和委托对象之间区别更难发现和理解吗？
+
+class语法`无法定义`类成员属性（只能定义方法），如果为了跟踪实例之间共享状态必须要这么做，只能使用丑陋的 .prototype 语法，比如：
+
+```javascript
+class C {
+	constructor(){
+		// 确保修改的是共享状态而不是在实例上创建一个屏蔽属性！
+		C.prototype.count++;
+		
+		// this.count可以通过委托实现我们的功能
+		console.log( "Hello: " + this.count );
+	}
+}
+
+// 直接向 prototype 对象上添加一个共享状态
+C.prototype.count = 0;
+
+var c1 = new C();
+// Hello: 1
+
+var c2 = new C();
+// Hello: 2
+
+c1.count === 2;				// true
+c1.count === c2.count;		// true
+```
+
+最大的问题就是违背了class语法的本意，在实现中暴露了 .prototype
+
+如果使用了 this.count++，会发现在c1和c2上都创建了.count属性，而不是更新共享状态。class没法解决这个问题，所以干脆不提供相应的语法支持，根本就不该这么做
+
+此外，class语法仍然面临着意外屏蔽的问题
+
+```javascript
+class C {
+	constructor(id) {
+		// id属性屏蔽了id()方法
+		this.id = id;
+	}
+	id() {
+		console.log("Id: " + id);
+	}
+}
+
+var c1 = new C("c1");
+c1.id();	// TypeError -- c1.id 现在是字符串"c1"
+```
+
+除此之外 super 也存在一些问题，super 的绑定方法和 this 类似，也就是无论目前的方法在原型链中处于什么位置，super 总会绑定到链的上一层
+
+出于性能考虑，super不是动态绑定，会在声明时"静态绑定"
+
+**但是**，会用许多不同的方法把函数应用在不同的对象上，每次执行这些操作都必须`重新绑定super`
+
+因此根据应用方式的不同，super`可能不会绑定到合适的对象`，所以可能需要用toMethod(..)来手动绑定super（类似用bind(..)来绑定this）
+
+如果习惯了把方法应用到不同对象上，从而可以自动利用this的隐式绑定规则，但对super而言是`行不通的`
+
+思考下面代码：
+
+```javascript
+class P {
+	foo() {
+		console.log("P.foo");
+	}
+}
+
+class C extends P {
+	foo() {
+		super();
+	}
+}
+
+var c1 = new C();
+c1.foo();		// "P.foo"
+
+var D = {
+    foo: function(){
+        console.log("D.foo");
+    }
+}
+
+var E = {
+    foo: C.prototype.foo
+}
+
+Object.setPrototypeOf( E, D );
+
+E.foo();		// "P.foo"
+```
+
+我们认为super()会动态绑定（非常合理），去期望super()会自动识别出E委托了D，所以E.foo()中的super调用了D.foo()
+
+**但事实不是如此**，出于性能考虑，super不像this一样是晚绑定（late bound，或者说动态绑定），它在[[HomeObject]].[[Prototype]]上，[[HomeObject]]会在创建时静态绑定
+
+本例中，super()会调用P.foo()，因为方法的[[HomeObject]]仍然是C，C的[[Prototype]]仍然是P
+
+确实可以手动修改super绑定，使用toMethod(..)绑定或重新绑定方法的[[HomeObject]]（就像设置对象的[[Prototype]]一样！）就可以解决本例的问题：
+
+```javascript
+var D = {
+	foo: function(){
+        console.log("D.foo");
+    }
+}
+
+// 把 E 委托到 D
+var E = Object.create( D );
+
+// 手动把foo的[[HomeObject]]绑定到E，E的[[prototype]]是D，所以super()是D.foo()
+E.foo = C.prototype.foo.toMethod( E, "foo" );
+
+E.foo();	// "D.foo"
+```
+
+**注意：**toMethod(..)会复制方法并把homeObject当作第一个参数（也就是我们传入的E），第二个参数（可选）是新的方法的名称（默认是原方法名）
+
+对于引擎自动绑定的super来说，必须时刻警惕是否需要进行手动绑定
+
+#### A.3 静态大于动态吗
+
+通过以上特性可以看出，ES6的class最大的问题就在于，它的语法有时会让我们认为，定义了一个class之后，它就变成了一个(未来会被实例化的)东西的静态定义，会`彻底忽略C是一个对象`，是一个具体的可以直接交互的东西
+
+传统面向类语言中，类定义之后不会进行修改；但JavaScript最强大的特性之一就是`动态性`，任何对象的定义都可以修改（除非改成不变）
+
+class似乎`不赞成这么做`，所以强制让我们使用丑陋的 .prototype 语法以及 super 问题，而且对于这种`动态产生的问题`，class基本上都`没有提供解决方法`
+
+换句话说，class就是想告诉你：”动态太难实现了，这不是个好主意。这里有一种看起来像静态的语法，所以`编写静态代码`吧“
+
+ES6的class想伪装成一种很好的语法问题的解决方法，但`实际上却让问题更难解决而且让JavaScript更难理解`
+
+**注意：**如果使用 .bind(..) 函数来硬绑定函数，那么这个函数不会像普通函数那样被ES6的extend扩展到子类中
